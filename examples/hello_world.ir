@@ -1,0 +1,8 @@
+global_string %msg = "Hello, World!"
+
+extern fn void puts(ptr)
+
+define fn void main()
+    call puts(%msg)
+    ret void
+end
