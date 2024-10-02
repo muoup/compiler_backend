@@ -23,4 +23,5 @@ namespace ir::parser {
 
     // Value
     static ir::value parse_value(lex_iter_t &start, lex_iter_t end);
+    static ir::variable parse_variable(lex_iter_t &start, lex_iter_t end);
 }

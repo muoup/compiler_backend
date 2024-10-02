@@ -110,7 +110,7 @@ ir::block::block_instruction parser::parse_instruction(ir::parser::lex_iter_t &s
     std::optional<ir::variable> assignment = std::nullopt;
 
     if (start->value == "%") {
-        assignment = parse_value(start, end);
+        assignment = parse_variable(start, end);
         debug::assert(start++->value == "=", "Expected =");
     }
 
@@ -128,19 +128,19 @@ ir::block::block_instruction parser::parse_instruction(ir::parser::lex_iter_t &s
 }
 
 ir::value parser::parse_value(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
+    if (start->value == "%") return ir::value { parse_variable(start, end) };
+    else debug::assert(false, "Unknown value type");
+
+    throw std::runtime_error("Unreachable");
+}
+
+ir::variable parser::parse_variable(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     debug::assert(start++->value == "%", "Expected %");
 
     bool is_ptr = start->value == "ptr" && (start++, true);
     auto value = start++->value;
 
-    if (is_ptr)
-        return ir::value { ir::lvalue { value } };
-
-    return ir::value {
-        ir::rvalue {
-
-        }
-    };
+    return ir::variable { std::move(value), is_ptr };
 }
 
 ir::block::call parser::parse_call(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
@@ -150,21 +150,21 @@ ir::block::call parser::parse_call(ir::parser::lex_iter_t &start, ir::parser::le
 
     debug::assert((start++)->value == "(", "Expected (");
 
-    std::vector<std::unique_ptr<ir::value>> args;
+    std::vector<ir::value> args;
 
     do {
-        args.push_back(std::make_unique<ir::value>(parse_value(start, end)));
+        args.emplace_back(parse_value(start, end));
     } while (start->value == "," && (start++, true));
 
     debug::assert(start++->value == ")", "Expected )");
 
-    return ir::block::call {name, std::move(args) };
+    return ir::block::call { name, std::move(args) };
 }
 
 ir::block::ret parser::parse_ret(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     debug::assert(start++->value == "ret", "Expected ret");
 
-    if (start->value == "void" && (start++, true)) return ir::block::ret {std::nullopt };
+    if (start->value == "void" && (start++, true)) return ir::block::ret { std::nullopt };
 
     return ir::block::ret { parse_value(start, end) };
 }

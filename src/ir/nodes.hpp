@@ -24,9 +24,10 @@ namespace ir {
     };
 
     struct variable {
+        bool is_pointer;
         std::string name;
 
-        explicit variable(std::string name) : name(std::move(name)) {}
+        explicit variable(std::string name, bool is_pointer) : name(std::move(name)), is_pointer(is_pointer) {}
     };
 
     struct value {
@@ -103,9 +104,9 @@ namespace ir {
         };
 
         struct ret : instruction {
-            value val;
+            std::optional<value> val;
 
-            explicit ret(value val)
+            explicit ret(std::optional<value> val)
                 : val(std::move(val)) {}
         };
     }
