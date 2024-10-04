@@ -1,5 +1,6 @@
 #include "parser.hpp"
 #include "../../debug/assert.hpp"
+#include "instruction_parsing.hpp"
 
 using namespace ir;
 
@@ -90,7 +91,8 @@ ir::global::function parser::parse_function(ir::parser::lex_iter_t &start, ir::p
 
     while (start->value != "end") {
         if ((start + 1)->value == ":") {
-            blocks.emplace_back(std::string(".") + (start++)->value);
+            blocks.emplace_back(std::string(".") + start->value);
+            start += 2;
             continue;
         }
 
@@ -104,67 +106,4 @@ ir::global::function parser::parse_function(ir::parser::lex_iter_t &start, ir::p
         std::move(function_prototype.parameters),
         std::move(blocks)
     };
-}
-
-ir::block::block_instruction parser::parse_instruction(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
-    std::optional<ir::variable> assignment = std::nullopt;
-
-    if (start->value == "%") {
-        assignment = parse_variable(start, end);
-        debug::assert(start++->value == "=", "Expected =");
-    }
-
-    std::unique_ptr<ir::block::instruction> inst;
-
-    if (start->value == "call") {
-        inst = std::make_unique<ir::block::call>(parse_call(start, end));
-    } else if (start->value == "ret") {
-        inst = std::make_unique<ir::block::ret>(parse_ret(start, end));
-    } else {
-        debug::assert(false, "Unknown instruction type");
-    }
-
-    return ir::block::block_instruction { assignment, std::move(inst) };
-}
-
-ir::value parser::parse_value(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
-    if (start->value == "%") return ir::value { parse_variable(start, end) };
-    else debug::assert(false, "Unknown value type");
-
-    throw std::runtime_error("Unreachable");
-}
-
-ir::variable parser::parse_variable(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
-    debug::assert(start++->value == "%", "Expected %");
-
-    bool is_ptr = start->value == "ptr" && (start++, true);
-    auto value = start++->value;
-
-    return ir::variable { std::move(value), is_ptr };
-}
-
-ir::block::call parser::parse_call(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
-    debug::assert(start++->value == "call", "Expected call");
-
-    std::string name = (start++)->value;
-
-    debug::assert((start++)->value == "(", "Expected (");
-
-    std::vector<ir::value> args;
-
-    do {
-        args.emplace_back(parse_value(start, end));
-    } while (start->value == "," && (start++, true));
-
-    debug::assert(start++->value == ")", "Expected )");
-
-    return ir::block::call { name, std::move(args) };
-}
-
-ir::block::ret parser::parse_ret(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
-    debug::assert(start++->value == "ret", "Expected ret");
-
-    if (start->value == "void" && (start++, true)) return ir::block::ret { std::nullopt };
-
-    return ir::block::ret { parse_value(start, end) };
 }

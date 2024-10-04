@@ -17,7 +17,7 @@ using preident_function = std::optional<preident_token>(*)(lex_iter_t, lex_iter_
 
 std::optional<preident_token> get_symbol(lex_iter_t start, lex_iter_t) {
     const static std::unordered_set<char> symbols {
-        '%', '=', ',', ':', ';', '(', ')'
+        '%', '=', ',', ':', '-', '(', ')'
     };
 
     if (!symbols.contains(*start)) return std::nullopt;

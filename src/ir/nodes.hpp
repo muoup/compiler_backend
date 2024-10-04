@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nodes.hpp"
+#include "../backend/ir_analyzer/analysis_nodes.hpp"
 
 #include <string>
 #include <utility>
@@ -41,11 +42,15 @@ namespace ir {
         struct instruction : node {};
 
         struct block_instruction : node {
-            std::optional<variable> assignment;
             std::unique_ptr<instruction> inst;
+            std::vector<value> operands;
+            std::optional<variable> assigned_to;
 
-            explicit block_instruction(std::optional<variable> assignment, std::unique_ptr<instruction> instruction)
-                : assignment(std::move(assignment)), inst(std::move(instruction)) {}
+            std::unique_ptr<backend::instruction_metadata> metadata { nullptr};
+
+            explicit block_instruction(std::unique_ptr<instruction> instruction,
+                                       std::vector<value> operands)
+                :   inst(std::move(instruction)), operands(std::move(operands)) {}
         };
 
         struct block : node {
@@ -56,59 +61,68 @@ namespace ir {
         };
 
         struct allocate : instruction {
-            size_t allocation_size;
-            size_t alignment;
+            size_t size;
 
-            allocate(size_t allocation_size, size_t alignment)
-                : allocation_size(allocation_size), alignment(alignment) {}
+            allocate(size_t allocation_size)
+                : size(allocation_size) {}
         };
 
         struct store : instruction {
             uint8_t size;
-            value val;
-            variable dest;
 
-            store(value value, variable dest, uint8_t size)
-                    : val(std::move(value)), dest(std::move(dest)) {}
+            explicit store(uint8_t size)
+                    : size(size) {}
         };
 
         struct load : instruction {
             uint8_t size;
-            variable val;
 
-            explicit load(variable val, uint8_t size)
-                : val(std::move(val)), size(size) {}
+            explicit load(uint8_t size)
+                : size(size) {}
+        };
+
+        struct branch : instruction {
+            std::string true_branch;
+            std::string false_branch;
+
+            explicit branch(std::string true_branch, std::string false_branch)
+                : true_branch(std::move(true_branch)), false_branch(std::move(false_branch)) {}
         };
 
         enum icmp_type : uint8_t {
-            eq, neq,
-            slt, sgt, slte, sgte,
-            ult, ugt, ulte, ugte
+            // Bits : is_signed | is_greater_than | is_equal | is_less_than
+
+            eq = 0b0010,
+            neq = 0b0000,
+
+            slt = 0b1011,
+            sgt = 0b1101,
+            sle = 0b1010,
+            sge = 0b1100,
+
+            ult = 0b1011,
+            ugt = 0b1101,
+            ule = 0b1010,
+            uge = 0b1100
         };
 
         struct icmp : instruction {
             icmp_type type;
-            value lhs;
-            value rhs;
 
-            icmp(icmp_type type, value lhs, value rhs)
-                : type(type), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
+            explicit icmp(icmp_type type)
+                : type(type) {}
         };
 
         struct call : instruction {
             std::string name;
-            std::vector<value> args {};
 
-            explicit call(std::string name, std::vector<value> args)
-                    : name(std::move(name)), args(std::move(args)) {}
+            explicit call(std::string name)
+                    : name(std::move(name)) {}
         };
 
-        struct ret : instruction {
-            std::optional<value> val;
-
-            explicit ret(std::optional<value> val)
-                : val(std::move(val)) {}
-        };
+        struct ret : instruction {};
+        struct add : instruction {};
+        struct sub : instruction {};
     }
 
     namespace global {
@@ -143,6 +157,8 @@ namespace ir {
             std::string name;
             std::vector<parameter> parameters;
             std::vector<block::block> blocks;
+
+            std::unique_ptr<backend::function_metadata> metadata { nullptr };
 
             explicit function(std::string name, std::vector<parameter> parameters, std::vector<block::block> blocks)
                 : name(std::move(name)), parameters(std::move(parameters)), blocks(std::move(blocks)) {}
