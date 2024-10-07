@@ -1,5 +1,5 @@
 #include "ir_analyzer.hpp"
-#include "analysis_nodes.hpp"
+#include "node_metadata.hpp"
 #include "../../ir/nodes.hpp"
 #include "scope_analyzer.hpp"
 
@@ -22,3 +22,9 @@ void backend::add_empty_metadata(ir::root &root) {
         }
     }
 }
+
+backend::instruction_metadata::instruction_metadata(const ir::block::block_instruction &instruction)
+    : instruction(instruction) {}
+
+backend::function_metadata::function_metadata(const ir::global::function &function)
+    : function(function) {}

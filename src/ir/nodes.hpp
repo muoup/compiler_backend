@@ -1,7 +1,7 @@
 #pragma once
 
 #include "nodes.hpp"
-#include "../backend/ir_analyzer/analysis_nodes.hpp"
+#include "../backend/ir_analyzer/node_metadata.hpp"
 
 #include <string>
 #include <utility>

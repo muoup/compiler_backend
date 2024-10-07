@@ -1,5 +1,5 @@
 #include "scope_analyzer.hpp"
-#include "analysis_nodes.hpp"
+#include "node_metadata.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -32,20 +32,16 @@ void backend::analyze_variable_lifetimes(ir::global::function &function) {
         for (auto &instruction : block.instructions) {
             auto &metadata = instruction.metadata;
 
-            const auto detect_dropped = [&](const std::optional<ir::value> &val) {
-                if (!val.has_value() || !std::holds_alternative<ir::variable>(val->val))
+            const auto detect_dropped = [&](const ir::value &val) {
+                if (!std::holds_alternative<ir::variable>(val.val))
                     return false;
 
-                const auto &variable = std::get<ir::variable>(val->val);
-                return lifetime_map[variable.name] != &instruction;
+                const auto &variable = std::get<ir::variable>(val.val);
+                return lifetime_map[variable.name] == &instruction;
             };
 
-            std::vector<bool> dropped_data {};
-
             for (const auto &operand : instruction.operands)
-                dropped_data.emplace_back(detect_dropped(operand));
-
-            metadata = std::make_unique<backend::instruction_metadata>(instruction);
+                metadata->dropped_data.emplace_back(detect_dropped(operand));
         }
     }
 }
