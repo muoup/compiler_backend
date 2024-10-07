@@ -62,8 +62,6 @@ static uint8_t parser::parse_uint8_t(ir::parser::lex_iter_t &start, ir::parser::
 static std::vector<value> parser::parse_operands(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     std::vector<value> operands {};
 
-    if (start->value != "-") return {};
-
     do {
         start++;
         operands.push_back(parse_value(start, end));
