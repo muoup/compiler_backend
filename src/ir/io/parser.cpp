@@ -11,7 +11,7 @@ ir::root parser::parse(const std::vector<ir::lexer::token> &tokens) {
 ir::root parser::parse_root(ir::parser::lex_iter_t start, ir::parser::lex_iter_t end) {
     ir::root root {};
 
-    while (start != end) {
+    while (start < end) {
         debug::assert(start->type == lexer::token_type::identifier, "Expected identifier");
 
         if (start->value == "global_string") {
@@ -58,7 +58,7 @@ ir::global::extern_function parser::parse_extern_function(ir::parser::lex_iter_t
         do {
             using enum ir::global::parameter_type;
 
-            ir::global::parameter_type type;
+            ir::global::parameter_type type {};
 
             if (start->value == "i8")       type = i8;
             else if (start->value == "i16") type = i16;
@@ -74,11 +74,12 @@ ir::global::extern_function parser::parse_extern_function(ir::parser::lex_iter_t
                 parameter_name = start++->value;
             }
 
-            parameters.emplace_back(type, parameter_name);
+            parameters.emplace_back(type, std::move(parameter_name));
         } while (start->value == "," && (start++, true));
     }
 
     debug::assert(start++->value == ")", "Expected )");
+    debug::assert(start++->type == lexer::token_type::break_line, "Expected extern");
 
     return ir::global::extern_function {std::move(name), std::move(parameters) };
 }
@@ -92,14 +93,15 @@ ir::global::function parser::parse_function(ir::parser::lex_iter_t &start, ir::p
     while (start->value != "end") {
         if ((start + 1)->value == ":") {
             blocks.emplace_back(std::string(".") + start->value);
-            start += 2;
+            start += 3; // Skip label, colon and break line
             continue;
         }
 
         blocks.back().instructions.push_back(parse_instruction(start, end));
+        debug::assert(start++->type == lexer::token_type::break_line, "Expected break line");
     }
 
-    start++;
+    start += 2; // Skip end and break line
 
     return ir::global::function {
         std::move(function_prototype.name),

@@ -9,6 +9,7 @@ namespace ir::lexer {
         number,
         string,
         symbol,
+        break_line
     };
 
     struct token {

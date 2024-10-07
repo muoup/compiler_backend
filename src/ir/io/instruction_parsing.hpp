@@ -18,7 +18,7 @@ namespace ir::parser {
 
     template <typename Arg>
     inline auto parse_argument(lex_iter_t &start, lex_iter_t end) {
-        static_assert(false, "Unknown argument type");
+        throw std::runtime_error("Unknown argument type");
     }
 
     template <>

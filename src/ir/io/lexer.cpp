@@ -60,19 +60,24 @@ std::vector<lexer::token> lexer::lex(const std::string &input) {
     std::vector<lexer::token> tokens;
 
     const auto dump_unconsumed = [&]() {
-        auto type = std::isdigit(*unconsumed_begin) ? lexer::token_type::number : lexer::token_type::identifier;
-
         if (unconsumed_begin != iter) {
+            auto type = std::isdigit(*unconsumed_begin) ? lexer::token_type::number : lexer::token_type::identifier;
             tokens.emplace_back(type, std::string(unconsumed_begin, iter));
-            unconsumed_begin = iter;
         }
+
+        unconsumed_begin = ++iter;
     };
 
     while (iter < input.end()) {
-        while (std::isspace(*iter)) {
-            if (unconsumed_begin != iter) dump_unconsumed();
-            iter++; unconsumed_begin = iter;
+        if (*iter == '\n' || *iter == '\r') {
+            dump_unconsumed();
+            tokens.emplace_back(lexer::token_type::break_line, "\n");
+            unconsumed_begin = ++iter;
         }
+
+        while (std::isspace(*iter))
+            dump_unconsumed();
+
         if (iter == input.end()) break;
 
         for (auto &func : preident_functions) {

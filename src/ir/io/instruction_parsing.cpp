@@ -62,6 +62,11 @@ static uint8_t parser::parse_uint8_t(ir::parser::lex_iter_t &start, ir::parser::
 static std::vector<value> parser::parse_operands(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     std::vector<value> operands {};
 
+    if (start->type == lexer::token_type::break_line)
+        return operands;
+
+    start--;
+
     do {
         start++;
         operands.push_back(parse_value(start, end));
@@ -96,7 +101,7 @@ static value parser::parse_value(ir::parser::lex_iter_t &start, ir::parser::lex_
         };
     }
 
-    throw std::runtime_error("Unreachable");
+    throw std::runtime_error("Value parsing failed");
 }
 
 static variable parser::parse_variable(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t) {
