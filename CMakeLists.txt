@@ -10,7 +10,11 @@ if(DEBUG)
     file(GLOB_RECURSE DEBUG_SOURCES "tests/*.cpp" "tests/*.hpp")
     list(APPEND SOURCES ${DEBUG_SOURCES})
 
-    add_executable(compiler_backend ${SOURCES})
+    add_executable(compiler_backend ${SOURCES}
+            src/ir/instruction_print.cpp
+            src/ir/node_printing.hpp)
 endif()
+
+message(STATUS "SOURCES: ${SOURCES}")
 
 add_library(language_ir STATIC ${SOURCES} library.cpp library.h)

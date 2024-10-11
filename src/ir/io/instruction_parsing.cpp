@@ -95,7 +95,7 @@ static value parser::parse_value(ir::parser::lex_iter_t &start, ir::parser::lex_
         return ir::value { parse_variable(start, end) };
     } else if (start->type == lexer::token_type::number) {
         return ir::value{
-                ir::literal{
+                ir::int_literal{
                         static_cast<uint64_t>(std::stoi(start++->value))
                 }
         };
