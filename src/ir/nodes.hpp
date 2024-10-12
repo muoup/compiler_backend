@@ -9,8 +9,9 @@
 #include <memory>
 #include <variant>
 #include <optional>
+#include <exception>
 
-#define NODE_PRINT(NAME, ...) void NAME::print(std::ostream& ostream) const { __internal_print(ostream, __VA_ARGS__); }
+#define PRINT_DEF(node_name, ...) void print(std::ostream &ostream) const override { __inst_print(ostream, node_name, ##__VA_ARGS__); }
 
 namespace ir {
     namespace global {
@@ -27,7 +28,9 @@ namespace ir {
         uint64_t value;
 
         explicit int_literal(uint64_t value) : value(value) {}
-        void print(std::ostream&) const;
+        void print(std::ostream &ostream) const {
+            ostream << (unsigned int) value;
+        }
     };
 
     /**
@@ -41,7 +44,11 @@ namespace ir {
         std::string name;
 
         explicit variable(std::string name, bool is_pointer) : name(std::move(name)), is_pointer(is_pointer) {}
-        void print(std::ostream&) const;
+        void print(std::ostream &ostream) const {
+            ostream << "%";
+            if (is_pointer) ostream << "ptr ";
+            ostream << name;
+        }
     };
 
     /**
@@ -55,10 +62,19 @@ namespace ir {
         explicit value(int_literal val) : val(val) {}
         explicit value(variable val) : val(std::move(val)) {}
 
-        void print(std::ostream&) const;
+        friend std::ostream& operator <<(std::ostream &ostream, const value& value) {
+            std::visit([&](auto&& arg) { arg.print(ostream); }, value.val);
+            return ostream;
+        }
     };
 
     namespace block {
+        template <typename... args>
+        static inline void __inst_print(std::ostream& ostream, const char* node_name, args... arg) {
+            ostream << node_name;
+            ((ostream << " " << arg), ...);
+        }
+
         /**
          *  The IR unit of a block. The contract of an instruction
          *  does not promise a certain action will be performed,
@@ -89,7 +105,7 @@ namespace ir {
                                        std::vector<value> operands)
                 :   inst(std::move(instruction)), operands(std::move(operands)) {}
 
-            void print(std::ostream&) const;
+            void print(std::ostream &ostream) const;
         };
 
         /**
@@ -117,6 +133,8 @@ namespace ir {
 
             explicit allocate(size_t allocation_size)
                 : size(allocation_size) {}
+
+            PRINT_DEF("allocate", size);
         };
 
         /**
@@ -124,11 +142,12 @@ namespace ir {
          *  that value in the memory referenced by the pointer.
          */
         struct store : instruction {
-            uint8_t size;
+            uint64_t size;
 
-            explicit store(uint8_t size)
+            explicit store(uint64_t size)
                     : size(size) {}
-            void print(std::ostream &ostream) const override;
+
+            PRINT_DEF("store", size);
         };
 
         /**
@@ -136,11 +155,12 @@ namespace ir {
          *  referenced memory.
          */
         struct load : instruction {
-            uint8_t size;
+            uint64_t size;
 
-            explicit load(uint8_t size)
+            explicit load(uint64_t size)
                 : size(size) {}
-            void print(std::ostream&) const override;
+
+            PRINT_DEF("load", size);
         };
 
         /**
@@ -151,27 +171,47 @@ namespace ir {
             std::string true_branch;
             std::string false_branch;
 
-            explicit branch(std::string true_branch, std::string false_branch)
+            explicit branch(std::string false_branch, std::string true_branch)
                 : true_branch(std::move(true_branch)), false_branch(std::move(false_branch)) {}
-            void print(std::ostream&) const override;
+
+            PRINT_DEF("branch", true_branch, false_branch);
         };
 
         enum icmp_type : uint8_t {
             // Bits : is_signed | is_greater_than | is_equal | is_less_than
 
-            eq = 0b0010,
-            neq = 0b0000,
+            eq  = 0b0010,
+            neq = 0b0101,
 
-            slt = 0b1011,
-            sgt = 0b1101,
-            sle = 0b1010,
-            sge = 0b1100,
+            slt = 0b1001,
+            sgt = 0b1100,
+            sle = 0b1011,
+            sge = 0b1110,
 
-            ult = 0b1011,
-            ugt = 0b1101,
-            ule = 0b1010,
-            uge = 0b1100
+            ult = 0b0001,
+            ugt = 0b0100,
+            ule = 0b0011,
+            uge = 0b0110
         };
+
+        inline const char* icmp_str(icmp_type type) {
+            switch (type) {
+                case eq: return "eq";
+                case neq: return "ne";
+
+                case slt: return "slt";
+                case sgt: return "sgt";
+                case sle: return "sle";
+                case sge: return "sge";
+
+                case ult: return "ult";
+                case ugt: return "ugt";
+                case ule: return "ule";
+                case uge: return "uge";
+
+                default: throw std::runtime_error("no such icmp type");
+            }
+        }
 
         /**
          *  Must immediately precede a branching instruction; performs a subtraction of two values
@@ -183,7 +223,8 @@ namespace ir {
 
             explicit icmp(icmp_type type)
                 : type(type) {}
-            void print(std::ostream&) const override;
+
+            PRINT_DEF("icmp", icmp_str(type));
         };
 
         /**
@@ -195,7 +236,8 @@ namespace ir {
 
             explicit call(std::string name)
                     : name(std::move(name)) {}
-            void print(std::ostream&) const override;
+
+            PRINT_DEF("call", name);
         };
 
         /**
@@ -204,7 +246,7 @@ namespace ir {
          *  TODO: Handle return values
          */
         struct ret : instruction {
-            void print(std::ostream&) const override;
+            PRINT_DEF("ret");
         };
 
         /**
@@ -212,7 +254,7 @@ namespace ir {
          *  stores their result in the assignment variable.
          */
         struct add : instruction {
-            void print(std::ostream&) const override;
+            PRINT_DEF("add");
         };
 
         /**
@@ -220,14 +262,14 @@ namespace ir {
          *  stores their result in the assignment variable.
          */
         struct sub : instruction {
-            void print(std::ostream&) const override;
+            PRINT_DEF("sub");
         };
     }
 
     namespace global {
         struct global_node : node {};
 
-        enum parameter_type {
+        enum parameter_type : uint8_t {
             i8, i16, i32, i64, ptr
         };
 

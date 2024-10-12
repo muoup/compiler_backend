@@ -20,6 +20,4 @@ namespace codegen {
     static void gen_function(const ir::global::function &functions);
 
     static void gen_instruction(const ir::block::block_instruction &instruction);
-    static void gen_call(const ir::block::call &call);
-    static void gen_ret(const ir::block::ret &ret);
 }

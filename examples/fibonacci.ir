@@ -3,13 +3,11 @@ define fn i32 fib(i32 %n)
     store 4 %n, %ptr 1
     %2 = load 4 %ptr 1
     %3 = icmp ule %2, 1
-    if %3 then base_case else recursive_case
-
-base_case:
+    branch base_case recursive_case %3
+.base_case:
     %4 = load 4 %ptr 1
-    return %4
-
-recursive_case:
+    ret %4
+.recursive_case:
     %5 = load 4 %ptr 1
     %6 = sub %5, 1
     %7 = call fib %6
@@ -17,5 +15,5 @@ recursive_case:
     %9 = sub %8, 2
     %10 = call fib %9
     %11 = add %10, %7
-    return %5
+    ret %5
 end

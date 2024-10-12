@@ -11,8 +11,7 @@ if(DEBUG)
     list(APPEND SOURCES ${DEBUG_SOURCES})
 
     add_executable(compiler_backend ${SOURCES}
-            src/ir/instruction_print.cpp
-            src/ir/node_printing.hpp)
+            src/ir/node_print.cpp)
 endif()
 
 message(STATUS "SOURCES: ${SOURCES}")
