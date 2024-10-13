@@ -19,6 +19,8 @@ void io_stack_test() {
 
     std::string input { std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>() };
 
+    file.close();
+
     auto tokens = ir::lexer::lex(input);
     auto parsed = ir::parser::parse(tokens);
 
@@ -58,9 +60,9 @@ void hello_world_lex() {
     auto parsed = ir::parser::parse(tokens);
     backend::analyze_ir(parsed);
     ir::output::emit(std::cout, parsed);
+    std::cout << '\n';
 
     asm("nop");
-//    codegen::generate(parsed, std::cout);
 }
 
 int main() {

@@ -40,8 +40,8 @@ namespace ir {
      *  at all.
      */
     struct variable {
-        bool is_pointer;
         std::string name;
+        bool is_pointer;
 
         explicit variable(std::string name, bool is_pointer) : name(std::move(name)), is_pointer(is_pointer) {}
         void print(std::ostream &ostream) const {
@@ -87,6 +87,7 @@ namespace ir {
          */
         struct instruction : virtual node {
             virtual void print(std::ostream&) const = 0;
+            virtual ~instruction() = default;
         };
 
         /**
@@ -135,6 +136,7 @@ namespace ir {
                 : size(allocation_size) {}
 
             PRINT_DEF("allocate", size);
+            ~allocate() override = default;
         };
 
         /**
@@ -148,6 +150,7 @@ namespace ir {
                     : size(size) {}
 
             PRINT_DEF("store", size);
+            ~store() override = default;
         };
 
         /**
@@ -161,6 +164,7 @@ namespace ir {
                 : size(size) {}
 
             PRINT_DEF("load", size);
+            ~load() override = default;
         };
 
         /**
@@ -175,6 +179,7 @@ namespace ir {
                 : true_branch(std::move(true_branch)), false_branch(std::move(false_branch)) {}
 
             PRINT_DEF("branch", true_branch, false_branch);
+            ~branch() override = default;
         };
 
         enum icmp_type : uint8_t {
@@ -225,6 +230,7 @@ namespace ir {
                 : type(type) {}
 
             PRINT_DEF("icmp", icmp_str(type));
+            ~icmp() override = default;
         };
 
         /**
@@ -238,6 +244,7 @@ namespace ir {
                     : name(std::move(name)) {}
 
             PRINT_DEF("call", name);
+            virtual ~call() = default;
         };
 
         /**
@@ -247,6 +254,7 @@ namespace ir {
          */
         struct ret : instruction {
             PRINT_DEF("ret");
+            ~ret() override = default;
         };
 
         /**
@@ -255,6 +263,7 @@ namespace ir {
          */
         struct add : instruction {
             PRINT_DEF("add");
+            ~add() override = default;
         };
 
         /**
@@ -263,6 +272,7 @@ namespace ir {
          */
         struct sub : instruction {
             PRINT_DEF("sub");
+            ~sub() override  = default;
         };
     }
 
