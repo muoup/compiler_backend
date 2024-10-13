@@ -11,8 +11,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     list(APPEND SOURCES ${DEBUG_SOURCES})
 
     # Enable sanitization and warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Og -g -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -Wall -Wpedantic")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -Wall -Wpedantic")
     add_executable(tests ${SOURCES})
 else()
-    add_library(language_ir STATIC ${SOURCES} library.cpp library.h)
+    add_library(language_ir STATIC ${SOURCES} library.cpp library.h
+            src/backend/debug/emitter_attachments.cpp
+            src/backend/debug/emitter_attachments.hpp)
 endif()

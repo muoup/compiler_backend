@@ -14,9 +14,18 @@ namespace ir {
         struct parameter;
         enum parameter_type : uint8_t;
     }
+
+    namespace block {
+        struct block_instruction;
+    }
 }
 
 namespace ir::output {
+    template <typename T>
+    using emitter_attachment = void(*)(std::ostream&, const T&);
+
+    inline emitter_attachment<ir::block::block_instruction> instruction_emitter_attachment = nullptr;
+
     void emit(std::ostream &ostream, const ir::root& root);
 
     static void emit_function(std::ostream &ostream, const ir::global::function &function);

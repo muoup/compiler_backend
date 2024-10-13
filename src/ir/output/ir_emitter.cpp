@@ -1,3 +1,4 @@
+#include <iomanip>
 #include "ir_emitter.hpp"
 
 #include "../nodes.hpp"
@@ -43,6 +44,10 @@ void ir::output::emit_function(std::ostream &ostream, const ir::global::function
 
         for (const auto &inst : block.instructions) {
             inst.print(ostream);
+
+            if (ir::output::instruction_emitter_attachment)
+                ir::output::instruction_emitter_attachment(ostream, inst);
+
             ostream << "\n";
         }
     }

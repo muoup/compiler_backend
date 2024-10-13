@@ -8,6 +8,7 @@
 #include "../src/ir/input/parser.hpp"
 #include "../src/ir/output/ir_emitter.hpp"
 #include "../src/ir/input/lexer.hpp"
+#include "../src/backend/debug/emitter_attachments.hpp"
 
 void io_stack_test() {
     std::ifstream file { "../examples/read_write_exact.ir" };
@@ -59,6 +60,9 @@ void hello_world_lex() {
     auto tokens = ir::lexer::lex(input);
     auto parsed = ir::parser::parse(tokens);
     backend::analyze_ir(parsed);
+
+    ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
+
     ir::output::emit(std::cout, parsed);
     std::cout << '\n';
 

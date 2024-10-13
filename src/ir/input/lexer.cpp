@@ -78,6 +78,12 @@ std::vector<lexer::token> lexer::lex(const std::string &input) {
         while (std::isspace(*iter))
             dump_unconsumed();
 
+        if (*iter == ';') {
+            dump_unconsumed();
+
+            iter = std::find(iter, end, '\n');
+        }
+
         if (iter == input.end()) break;
 
         for (auto &func : preident_functions) {
