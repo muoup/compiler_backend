@@ -244,7 +244,7 @@ namespace ir {
                     : name(std::move(name)) {}
 
             PRINT_DEF("call", name);
-            virtual ~call() = default;
+            ~call() override = default;
         };
 
         /**
