@@ -9,6 +9,7 @@
 #include "../src/ir/output/ir_emitter.hpp"
 #include "../src/ir/input/lexer.hpp"
 #include "../src/backend/debug/emitter_attachments.hpp"
+#include "../src/backend/codegen/codegen.hpp"
 
 void io_stack_test() {
     std::ifstream file { "../examples/read_write_exact.ir" };
@@ -63,8 +64,10 @@ void hello_world_lex() {
 
     ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
 
-    ir::output::emit(std::cout, parsed);
-    std::cout << '\n';
+//    ir::output::emit(std::cout, parsed);
+//    std::cout << '\n';
+
+    backend::codegen::generate(parsed, std::cout);
 
     asm("nop");
 }

@@ -257,6 +257,30 @@ namespace ir {
             ~ret() override = default;
         };
 
+        enum arithmetic_type {
+            iadd, isub, imul, idiv, imod
+        };
+
+        inline const char* arithmetic_name(arithmetic_type type) {
+            switch (type) {
+                case iadd: return "iadd";
+                case isub: return "isub";
+                case imul: return "imul";
+                case idiv: return "idiv";
+                case imod: return "imod";
+            }
+        }
+
+        struct arithmetic : instruction {
+            arithmetic_type type;
+
+            explicit arithmetic(arithmetic_type type)
+                : type(type) {}
+
+            PRINT_DEF(arithmetic_name(type));
+            ~arithmetic() override = default;
+        };
+
         /**
          *  Basic algebraic operator. Adds all arguments provided and
          *  stores their result in the assignment variable.

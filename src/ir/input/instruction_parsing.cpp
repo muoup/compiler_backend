@@ -11,6 +11,14 @@ auto generate_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
     return ir::block::block_instruction { std::move(instruction), std::move(values) };
 }
 
+template <typename InstructionType, typename... Args>
+auto generate_instruction(parser::lex_iter_t &start, parser::lex_iter_t end, Args... args) {
+    return ir::block::block_instruction {
+        std::make_unique<InstructionType>(args...),
+        parser::parse_operands(start, end)
+    };
+}
+
 ir::block::block_instruction parser::parse_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
     std::optional<ir::variable> assignment {};
 
@@ -40,10 +48,10 @@ static ir::block::block_instruction parser::parse_unassigned_instruction(parser:
         return generate_instruction<ir::block::icmp, ir::block::icmp_type>(start, end);
     else if (instruction == "branch")
         return generate_instruction<ir::block::branch, std::string, std::string>(start, end);
-    else if (instruction == "add")
-        return generate_instruction<ir::block::add>(start, end);
-    else if (instruction == "sub")
-        return generate_instruction<ir::block::sub>(start, end);
+    else if (instruction == "iadd")
+        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::iadd);
+    else if (instruction == "isub")
+        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::isub);
     else if (instruction == "ret")
         return generate_instruction<ir::block::ret>(start, end);
     else if (instruction == "call")

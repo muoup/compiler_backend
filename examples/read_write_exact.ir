@@ -10,11 +10,11 @@ define fn void fib(i32 %n)
     ret %4
 .recursive_case:
     %5 = load 4 %ptr 1
-    %6 = sub %5, 1
+    %6 = isub %5, 1
     %7 = call fib %6
     %8 = load 4 %ptr 1
-    %9 = sub %8, 2
+    %9 = isub %8, 2
     %10 = call fib %9
-    %11 = add %10, %7
+    %11 = iadd %10, %7
     ret %5
 end
