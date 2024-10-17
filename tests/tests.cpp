@@ -32,7 +32,7 @@ void io_stack_test() {
     auto new_ir = ss.str();
     auto new_tokens = ir::lexer::lex(new_ir);
 
-    for (auto i = 0; i < std::min(tokens.size(), new_tokens.size()); i++) {
+    for (size_t i = 0; i < std::min(tokens.size(), new_tokens.size()); i++) {
         if (tokens[i].value == new_tokens[i].value)
             continue;
 
@@ -63,9 +63,6 @@ void hello_world_lex() {
     backend::analyze_ir(parsed);
 
     ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
-
-//    ir::output::emit(std::cout, parsed);
-//    std::cout << '\n';
 
     backend::codegen::generate(parsed, std::cout);
 

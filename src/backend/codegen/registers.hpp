@@ -1,8 +1,15 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdlib>
 
-namespace ir::registers {
+#include <string>
+
+namespace backend::codegen {
+    struct function_context;
+
+    constexpr size_t register_count = 17;
+
     enum register_t : uint8_t {
         rax, rbx, rcx, rdx,
         rsi, rdi,
@@ -11,8 +18,17 @@ namespace ir::registers {
         r13, r14, r15, r16
     };
 
-    const char* register_as_string(register_t reg);
+    enum register_size : uint8_t {
+        byte,
+        word,
+        dword,
+        qword
+    };
+
+    extern const char* register_name[register_count][4];
+
+    std::string register_as_string(register_t reg, size_t size);
 
     register_t  param_register(uint8_t index);
-    const char* param_register_string(uint8_t index);
+    std::string param_register_string(uint8_t index, size_t size);
 }

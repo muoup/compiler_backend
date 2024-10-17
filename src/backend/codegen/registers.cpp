@@ -1,8 +1,28 @@
 #include "registers.hpp"
 
-using namespace ir;
+using namespace backend;
 
-registers::register_t registers::param_register(uint8_t index) {
+const char* codegen::register_name[register_count][4] = {
+        { "al", "ax", "eax", "rax" },
+        { "bl", "bx", "ebx", "rbx" },
+        { "cl", "cx", "ecx", "rcx" },
+        { "dl", "dx", "edx", "rdx" },
+        { "sil", "si", "esi", "rsi" },
+        { "dil", "di", "edi", "rdi" },
+        { "bpl", "bp", "ebp", "rbp" },
+        { "spl", "sp", "esp", "rsp" },
+        { "r8b", "r8w", "r8d", "r8" },
+        { "r9b", "r9w", "r9d", "r9" },
+        { "r10b", "r10w", "r10d", "r10" },
+        { "r11b", "r11w", "r11d", "r11" },
+        { "r12b", "r12w", "r12d", "r12" },
+        { "r13b", "r13w", "r13d", "r13" },
+        { "r14b", "r14w", "r14d", "r14" },
+        { "r15b", "r15w", "r15d", "r15" },
+        { "r16b", "r16w", "r16d", "r16" }
+};
+
+codegen::register_t codegen::param_register(uint8_t index) {
     const static register_t call_registers[] = {
             rdi,
             rsi,
@@ -12,33 +32,10 @@ registers::register_t registers::param_register(uint8_t index) {
     return call_registers[index];
 }
 
-const char *registers::param_register_string(uint8_t index) {
-    return register_as_string(param_register(index));
+std::string codegen::param_register_string(uint8_t index, size_t size) {
+    return register_as_string(param_register(index), size);
 }
 
-const char *registers::register_as_string(ir::registers::register_t reg) {
-    switch (reg) {
-        case rax:   return "rax";
-        case rbx:   return "rbx";
-        case rcx:   return "rcx";
-        case rdx:   return "rdx";
-
-        case rsi:   return "rsi";
-        case rdi:   return "rdi";
-
-        case rbp:   return "rbp";
-        case rsp:   return "rsp";
-
-        case r8:    return "r8";
-        case r9:    return "r9";
-        case r10:   return "r10";
-        case r11:   return "r11";
-        case r12:   return "r12";
-        case r13:   return "r13";
-        case r14:   return "r14";
-        case r15:   return "r15";
-        case r16:   return "r16";
-
-        default:    return "ERROR";
-    }
+std::string codegen::register_as_string(backend::codegen::register_t reg, size_t size) {
+    return register_name[reg][size - 1];
 }

@@ -1,6 +1,8 @@
 #include <sstream>
+
 #include "codegen.hpp"
 #include "instructions.hpp"
+#include "../../debug/assert.hpp"
 
 void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
     ostream << "[bits 64]\n";
@@ -41,26 +43,96 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
     std::stringstream ss;
 
     backend::codegen::function_context context {
-        ss
+        .ostream = ss,
+        .current_function = function,
     };
 
+    for (size_t i = 0; i < function.parameters.size(); i++){
+        auto reg = backend::codegen::param_register(i);
+        auto reg_storage = std::make_unique<backend::codegen::register_storage>(reg);
+
+        context.map_value(function.parameters[i].name.c_str(), std::move(reg_storage));
+    }
+
     for (const auto &block : function.blocks) {
+        context.ostream << block.name << ":\n";
+
         for (const auto &instruction : block.instructions) {
-            gen_instruction(context, instruction);
+            context.current_instruction = instruction.metadata.get();
+            auto info = gen_instruction(context, instruction);
+
+            if (!info.valid)
+                goto finish;
+
+            for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
+                if (!instruction.metadata->dropped_data[i]) continue;
+
+                const auto &var = std::get<ir::variable>(instruction.operands[i].val);
+
+                context.unmap_value(
+                    var.name.c_str()
+                );
+            }
+
+            if (info.return_dest && instruction.assigned_to) {
+                context.map_value(
+                    instruction.assigned_to->name.c_str(),
+                    std::move(info.return_dest)
+                );
+            }
         }
     }
 
-    if (context.rsp_off != 0) {
-        ostream << "push rbp" << '\n';
-        ostream << "mov rbp, rsp" << '\n';
-        ostream << "sub rsp, " << context.rsp_off << '\n';
+    finish:
+    if (context.current_stack_size != 0) {
+        ostream << "    push rbp" << '\n';
+        ostream << "    mov rbp, rsp" << '\n';
+        ostream << "    sub rsp, " << context.current_stack_size << '\n';
     }
 
     ostream << ss.str();
 }
 
-void backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
-    if (auto *allocate = dynamic_cast<ir::block::allocate*>(instruction.inst.get())) {
-        gen_allocate(context, *allocate);
+backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
+    std::vector<std::unique_ptr<backend::codegen::literal>> literals;
+    std::vector<const vptr*> operands;
+
+    for (const auto& operand : instruction.operands) {
+        if (std::holds_alternative<ir::int_literal>(operand.val)) {
+            const auto &literal = std::get<ir::int_literal>(operand.val);
+
+            literals.emplace_back(
+                    std::make_unique<backend::codegen::literal>(
+                            std::to_string(literal.value)
+                    )
+            );
+
+            operands.push_back(literals.back().get());
+        } else if (std::holds_alternative<ir::variable>(operand.val)) {
+            const auto &variable = std::get<ir::variable>(operand.val);
+
+            debug::assert(context.value_map.contains(variable.name), "Variable not found in value map");
+
+            operands.push_back(context.value_map.at(variable.name).get());
+        }
     }
+
+    if (auto *allocate = dynamic_cast<ir::block::allocate*>(instruction.inst.get())) {
+        return gen_allocate(context, *allocate, operands);
+    } else if (auto *store = dynamic_cast<ir::block::store*>(instruction.inst.get())) {
+        return gen_store(context, *store, operands);
+    } else if (auto *load = dynamic_cast<ir::block::load*>(instruction.inst.get())) {
+        return gen_load(context, *load, operands);
+    } else if (auto *icmp = dynamic_cast<ir::block::icmp*>(instruction.inst.get())) {
+        return gen_icmp(context, *icmp, operands);
+    } else if (auto *branch = dynamic_cast<ir::block::branch*>(instruction.inst.get())) {
+        return gen_branch(context, *branch, operands);
+    }
+
+    return {
+        .valid = false
+    };
 }
+
+
+

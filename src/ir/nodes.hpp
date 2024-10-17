@@ -202,7 +202,7 @@ namespace ir {
         inline const char* icmp_str(icmp_type type) {
             switch (type) {
                 case eq: return "eq";
-                case neq: return "ne";
+                case neq: return "neq";
 
                 case slt: return "slt";
                 case sgt: return "sgt";
