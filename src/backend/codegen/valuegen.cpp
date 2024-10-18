@@ -11,7 +11,7 @@ backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::code
     return std::make_unique<stack_pointer>(context.current_stack_size);
 }
 
-backend::codegen::virtual_pointer backend::codegen::request_register(backend::codegen::function_context &context) {
+backend::codegen::virtual_pointer backend::codegen::find_register(backend::codegen::function_context &context) {
     // First check if any registers are being dropped
     const auto& dropped_data = context.current_instruction->dropped_data;
 
@@ -28,6 +28,7 @@ backend::codegen::virtual_pointer backend::codegen::request_register(backend::co
 
         if (!reg_storage) continue;
 
+        context.used_register[reg_storage->reg] = true;
         return std::make_unique<backend::codegen::register_storage>(reg_storage->reg);
     }
 
@@ -39,7 +40,19 @@ backend::codegen::virtual_pointer backend::codegen::request_register(backend::co
 
         if (context.used_register[reg]) continue;
 
+        context.used_register[reg] = true;
         return std::make_unique<backend::codegen::register_storage>(reg);
+    }
+
+    // Otherwise check to see if any registers can be taken temporarily
+    // i = 1 as rax should not be tampered with
+    for (size_t i = 1; i < register_count; i++) {
+        if (context.used_register[i]) continue;
+
+        context.register_tampered[i] = true;
+
+        context.used_register[i] = true;
+        return std::make_unique<backend::codegen::register_storage>((register_t) i);
     }
 
     throw std::runtime_error("unimplemented!");
@@ -54,7 +67,7 @@ std::string backend::codegen::get_stack_prefix(size_t size) {
         case 4:
             return "DWORD";
         case 8:
-            return "QUAD";
+            return "QWORD";
     }
 
     throw std::runtime_error("unsupported size type");

@@ -34,21 +34,15 @@ namespace backend::codegen {
         std::unordered_map<std::string, virtual_pointer> value_map;
 
         bool used_register[register_count] {};
+        bool register_tampered[register_count] {};
+
         size_t current_stack_size = 0;
 
         void map_value(const char* name, virtual_pointer value) {
             value_map[name] = std::move(value);
-
-            if (auto reg = dynamic_cast<register_storage*>(value_map[name].get())) {
-                used_register[reg->reg] = true;
-            }
         }
 
         void unmap_value(const char* name) {
-            if (auto reg = dynamic_cast<register_storage*>(value_map[name].get())) {
-                used_register[reg->reg] = false;
-            }
-
             value_map.erase(name);
         }
     };

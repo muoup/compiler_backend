@@ -27,8 +27,8 @@ namespace backend::codegen {
 
     extern const char* register_name[register_count][4];
 
-    std::string register_as_string(register_t reg, size_t size);
+    const char * register_as_string(backend::codegen::register_t reg, size_t size);
 
     register_t  param_register(uint8_t index);
-    std::string param_register_string(uint8_t index, size_t size);
+    const char * param_register_string(uint8_t index, size_t size);
 }

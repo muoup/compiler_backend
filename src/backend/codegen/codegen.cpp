@@ -1,3 +1,4 @@
+#include <ranges>
 #include <sstream>
 
 #include "codegen.hpp"
@@ -12,7 +13,7 @@ void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
     gen_defined_functions(ostream, root.functions);
 }
 
-void backend::codegen::gen_extern_functions(std::ostream &ostream, const std::vector<ir::global::extern_function> &extern_functions) {
+static void backend::codegen::gen_extern_functions(std::ostream &ostream, const std::vector<ir::global::extern_function> &extern_functions) {
     ostream << "section .external_functions" << '\n';
 
     for (const auto &extern_function : extern_functions) {
@@ -20,7 +21,7 @@ void backend::codegen::gen_extern_functions(std::ostream &ostream, const std::ve
     }
 }
 
-void backend::codegen::gen_global_strings(std::ostream &ostream, const std::vector<ir::global::global_string> &global_strings) {
+static void backend::codegen::gen_global_strings(std::ostream &ostream, const std::vector<ir::global::global_string> &global_strings) {
     ostream << "section .global_strings" << '\n';
 
     for (const auto &global_string : global_strings) {
@@ -28,7 +29,7 @@ void backend::codegen::gen_global_strings(std::ostream &ostream, const std::vect
     }
 }
 
-void backend::codegen::gen_defined_functions(std::ostream &ostream, const std::vector<ir::global::function> &functions) {
+static void backend::codegen::gen_defined_functions(std::ostream &ostream, const std::vector<ir::global::function> &functions) {
     ostream << "section .text" << '\n';
 
     for (const auto &function : functions) {
@@ -36,7 +37,7 @@ void backend::codegen::gen_defined_functions(std::ostream &ostream, const std::v
     }
 }
 
-void backend::codegen::gen_function(std::ostream &ostream, const ir::global::function &function) {
+static void backend::codegen::gen_function(std::ostream &ostream, const ir::global::function &function) {
     ostream << "global " << function.name << '\n';
     ostream << function.name << ':' << '\n';
 
@@ -55,9 +56,22 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
     }
 
     for (const auto &block : function.blocks) {
-        context.ostream << block.name << ":\n";
+        context.ostream << "." << block.name << ":\n";
 
         for (const auto &instruction : block.instructions) {
+            for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
+                if (!instruction.metadata->dropped_data[i]) continue;
+
+                if (std::holds_alternative<ir::int_literal>(instruction.operands[i].val)) continue;
+
+                const auto &var = std::get<ir::variable>(instruction.operands[i].val);
+                const auto *ptr = context.value_map.at(var.name).get();
+
+                if (auto *reg = dynamic_cast<const backend::codegen::register_storage*>(ptr)) {
+                    context.used_register[reg->reg] = true;
+                }
+            }
+
             context.current_instruction = instruction.metadata.get();
             auto info = gen_instruction(context, instruction);
 
@@ -90,10 +104,42 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
         ostream << "    sub rsp, " << context.current_stack_size << '\n';
     }
 
-    ostream << ss.str();
+    std::vector<const char*> dropped_vars;
+
+    for (int i = 1; i < register_count; i++) {
+        if (context.register_tampered[i]) {
+            const auto *reg = backend::codegen::register_as_string((register_t) i, 8);
+
+            dropped_vars.push_back(reg);
+        }
+    }
+
+    const bool registers_tampered = !dropped_vars.empty();
+
+    if (registers_tampered) {
+        auto code = ss.str();
+
+        while (code.find("ret") != std::string::npos) {
+            code.replace(code.find("leave\n\tret"), 10, "jmp .__int_end");
+        }
+
+        for (const auto *reg : dropped_vars) {
+            ostream << "    push " << reg << '\n';
+        }
+
+        ostream << code;
+        ostream << ".__int_end:\n";
+
+        for (const auto *dropped_var : std::ranges::reverse_view(dropped_vars)) {
+            ostream << "    pop " << dropped_var << '\n';
+        }
+        ostream << "    leave\n\tret";
+    } else {
+        ostream << ss.str();
+    }
 }
 
-backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
+static backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
     std::vector<std::unique_ptr<backend::codegen::literal>> literals;
     std::vector<const vptr*> operands;
 
@@ -127,6 +173,12 @@ backend::codegen::instruction_return backend::codegen::gen_instruction(backend::
         return gen_icmp(context, *icmp, operands);
     } else if (auto *branch = dynamic_cast<ir::block::branch*>(instruction.inst.get())) {
         return gen_branch(context, *branch, operands);
+    } else if (auto *ret = dynamic_cast<ir::block::ret*>(instruction.inst.get())) {
+        return gen_return(context, *ret, operands);
+    } else if (auto *arithmetic = dynamic_cast<ir::block::arithmetic*>(instruction.inst.get())) {
+        return gen_arithmetic(context, *arithmetic, operands);
+    } else if (auto *call = dynamic_cast<ir::block::call*>(instruction.inst.get())) {
+        return gen_call(context, *call, operands);
     }
 
     return {

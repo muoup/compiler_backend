@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include "registers.hpp"
 
 using namespace backend;
@@ -32,10 +33,21 @@ codegen::register_t codegen::param_register(uint8_t index) {
     return call_registers[index];
 }
 
-std::string codegen::param_register_string(uint8_t index, size_t size) {
+const char * codegen::param_register_string(uint8_t index, size_t size) {
     return register_as_string(param_register(index), size);
 }
 
-std::string codegen::register_as_string(backend::codegen::register_t reg, size_t size) {
-    return register_name[reg][size - 1];
+const char * codegen::register_as_string(backend::codegen::register_t reg, size_t size) {
+    switch (size) {
+        case 1:
+            return register_name[reg][0];
+        case 2:
+            return register_name[reg][1];
+        case 4:
+            return register_name[reg][2];
+        case 8:
+            return register_name[reg][3];
+        default:
+            throw std::runtime_error("invalid register size");
+    }
 }

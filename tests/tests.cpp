@@ -50,6 +50,7 @@ void io_stack_test() {
 
 void hello_world_lex() {
     std::ifstream file { "../examples/fibonacci.ir" };
+    std::ofstream ofile { "../examples/fibonacci.asm" };
 
     if (!file.is_open()) {
         std::cerr << "Failed to open file" << std::endl;
@@ -63,8 +64,9 @@ void hello_world_lex() {
     backend::analyze_ir(parsed);
 
     ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
+//    ir::output::emit(std::cout, parsed);
 
-    backend::codegen::generate(parsed, std::cout);
+    backend::codegen::generate(parsed, ofile);
 
     asm("nop");
 }

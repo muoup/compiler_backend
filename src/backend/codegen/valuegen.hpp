@@ -16,7 +16,7 @@ namespace backend::codegen {
     using virtual_pointer = std::unique_ptr<vptr>;
 
     virtual_pointer stack_allocate(backend::codegen::function_context &context, size_t size);
-    virtual_pointer request_register(backend::codegen::function_context &context);
+    virtual_pointer find_register(backend::codegen::function_context &context);
 
     std::string get_stack_prefix(size_t size);
 

@@ -43,4 +43,19 @@ namespace backend::codegen {
             const ir::block::branch &branch,
             std::vector<const vptr*> &virtual_operands
     );
+    instruction_return gen_return(
+            backend::codegen::function_context &context,
+            const ir::block::ret &ret,
+            std::vector<const vptr*> &virtual_operands
+    );
+    instruction_return gen_arithmetic(
+            backend::codegen::function_context &context,
+            const ir::block::arithmetic &arithmetic,
+            std::vector<const vptr*> &virtual_operands
+    );
+    instruction_return gen_call(
+            backend::codegen::function_context &context,
+            const ir::block::call &call,
+            std::vector<const vptr*> &virtual_operands
+    );
 }
