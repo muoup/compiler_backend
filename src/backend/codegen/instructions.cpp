@@ -67,13 +67,13 @@ const char* jmp_inst(ir::block::icmp_type type) {
             return "jge";
 
         case ult:
-            return "jl";
+            return "jb";
         case ugt:
-            return "jg";
+            return "ja";
         case ule:
-            return "jle";
+            return "jbe";
         case uge:
-            return "jge";
+            return "jae";
 
         default:
             throw std::runtime_error("no such icmp type");
