@@ -32,18 +32,33 @@ namespace backend::codegen {
         const backend::instruction_metadata *current_instruction;
 
         std::unordered_map<std::string, virtual_pointer> value_map;
+        bool dropped_reassignable = true;
 
         bool used_register[register_count] {};
         bool register_tampered[register_count] {};
 
         size_t current_stack_size = 0;
 
+        void set_used(const vptr* value, bool used) {
+            if (auto *reg_storage = dynamic_cast<const register_storage*>(value)) {
+                used_register[reg_storage->reg] = used;
+            }
+        }
+
         void map_value(const char* name, virtual_pointer value) {
-            value_map[name] = std::move(value);
+            set_used(value.get(), true);
+            value_map[std::string { name }] = std::move(value);
         }
 
         void unmap_value(const char* name) {
+            set_used(value_map.at(name).get(), false);
             value_map.erase(name);
+        }
+
+        void remap_value(const char* name, virtual_pointer value) {
+            set_used(value.get(), true);
+            value_map[name] = std::move(value);
+            set_used(value.get(), false);
         }
     };
 

@@ -1,8 +1,13 @@
-#include <sstream>
 #include "instructions.hpp"
+
+#include <sstream>
+
 #include "codegen.hpp"
 #include "valuegen.hpp"
+#include "inst_output.hpp"
+
 #include "../../debug/assert.hpp"
+#include "dataflow.hpp"
 
 backend::codegen::instruction_return backend::codegen::gen_allocate(
     backend::codegen::function_context &context,
@@ -23,11 +28,7 @@ backend::codegen::instruction_return backend::codegen::gen_store(
 ) {
     debug::assert(virtual_operands.size() == 2, "Store instruction must have 2 operands");
 
-    const auto *src = virtual_operands[0];
-    const auto *dest = virtual_operands[1];
-
-    context.ostream << "    mov " << dest->get_address(store.size) << ", " << src->get_address(store.size) << '\n';
-
+    backend::codegen::emit_move(context, virtual_operands[1], virtual_operands[0], store.size);
     return backend::codegen::instruction_return {};
 }
 
@@ -39,12 +40,12 @@ backend::codegen::instruction_return backend::codegen::gen_load(
     debug::assert(virtual_operands.size() == 1, "Load instruction must have 2 operands");
 
     const auto *src = virtual_operands[0];
-    auto reg = backend::codegen::find_register(context);
+    auto dest = backend::codegen::find_memory(context, load.size);
 
-    context.ostream << "    mov " << reg->get_address(load.size) << ", " << src->get_address(load.size) << '\n';
+    backend::codegen::emit_move(context, dest.get(), src, load.size);
 
     return {
-        .return_dest = std::move(reg)
+        .return_dest = std::move(dest)
     };
 }
 
@@ -91,7 +92,7 @@ backend::codegen::instruction_return backend::codegen::gen_icmp(
     const auto *rhs = virtual_operands[1];
     const auto *icmp_flag = jmp_inst(icmp.type);
 
-    context.ostream << "    cmp " << lhs->get_address(8) << ", " << rhs->get_address(8) << '\n';
+    context.ostream << "    cmp     " << lhs->get_address(8) << ", " << rhs->get_address(8) << '\n';
 
     return {
             .return_dest = std::make_unique<backend::codegen::icmp_result>(icmp_flag)
@@ -108,8 +109,8 @@ backend::codegen::instruction_return backend::codegen::gen_branch(
     const auto *icmp_result = dynamic_cast<const backend::codegen::icmp_result*>(virtual_operands[0]);
     debug::assert(icmp_result, "Parameter of Branch is not a ICMP Result!");
 
-    context.ostream << "    " << icmp_result->flag << " ." << branch.true_branch << '\n';
-    context.ostream << "    jmp ." << branch.false_branch << '\n';
+    context.ostream << "    " << icmp_result->flag << "     ." << branch.true_branch << '\n';
+    context.ostream << "    jmp     ." << branch.false_branch << '\n';
 
     return {};
 }
@@ -118,6 +119,8 @@ backend::codegen::instruction_return backend::codegen::gen_return(
         backend::codegen::function_context &context,
         const ir::block::ret &,
         std::vector<const vptr *> &virtual_operands) {
+    const static auto rax = std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax);
+
     debug::assert(virtual_operands.size() <= 1, "Invalid Parameter Count for Return");
 
     if (virtual_operands.empty()) {
@@ -125,10 +128,7 @@ backend::codegen::instruction_return backend::codegen::gen_return(
         return {};
     }
 
-    const auto *ret_val = virtual_operands[0];
-
-    // TODO: Allow for different sized-register return
-    context.ostream << "    mov rax, " << ret_val->get_address(8) << '\n';
+    codegen::emit_move(context, rax.get(), virtual_operands[0], 8);
     context.ostream << "    leave\n\tret\n";
     return {};
 }
@@ -163,8 +163,8 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic(
     auto reg = backend::codegen::find_register(context);
     auto op = arithmetic_command(arithmetic.type);
 
-    context.ostream << "    mov " << reg->get_address(8) << ", " << lhs->get_address(8) << '\n';
-    context.ostream << "    " << op << " " << reg->get_address(8) << ", " << rhs->get_address(8) << '\n';
+    backend::codegen::emit_move(context, reg.get(), lhs, 8);
+    context.ostream << "    " << op << "     " << reg->get_address(8) << ", " << rhs->get_address(8) << '\n';
 
     return {
         .return_dest = std::move(reg)
@@ -176,52 +176,26 @@ backend::codegen::instruction_return backend::codegen::gen_call(
         const ir::block::call &call,
         std::vector<const vptr *> &virtual_operands) {
 
-    std::stringstream pop_calls;
+    bool dropped_reassignable = context.dropped_reassignable;
+    context.dropped_reassignable = false;
 
-    for (int i = 0; i < virtual_operands.size(); i++) {
+    std::stringstream pop_calls {};
+
+    backend::codegen::empty_register(context, backend::codegen::register_t::rax);
+
+    for (size_t i = 0; i < virtual_operands.size(); i++) {
         auto *operand = virtual_operands[i];
-        const auto &operand_val = context.current_instruction->instruction.operands[i].val;
         const auto param_reg_id = backend::codegen::param_register((uint8_t) i);
 
-        if (context.used_register[param_reg_id]) {
-            auto reg = find_register(context);
-
-            for (auto &[key, val] : context.value_map) {
-                auto *reg_storage = dynamic_cast<backend::codegen::register_storage*>(val.get());
-
-                if (reg_storage && reg_storage->reg == param_reg_id) {
-                    context.ostream << "    mov " << reg->get_address(8) << ", " << reg_storage->get_address(8) << '\n';
-
-                    auto key_str = std::string(key);
-
-                    operand = reg.get();
-
-                    context.unmap_value(key_str.c_str());
-                    context.map_value(key_str.c_str(), std::move(reg));
-                    break;
-                }
-            }
-        }
-
-        const auto *param_reg = backend::codegen::param_register_string((uint8_t) i, 8);
-
-        if (std::holds_alternative<ir::int_literal>(operand_val)) {
-            const auto &int_literal = std::get<ir::int_literal>(operand_val);
-
-            context.ostream << "    mov " << param_reg << ", " << int_literal.value << '\n';
-        } else {
-            context.ostream << "    mov " << param_reg << ", " << operand->get_address(8) << '\n';
-        }
+        backend::codegen::move_to_register(context, operand, param_reg_id);
     }
 
-    context.ostream << "    call " << call.name << '\n';
-
-    auto ret = backend::codegen::find_register(context);
-    context.ostream << "    mov " << ret->get_address(8) << ", rax\n";
-
+    context.ostream << "    call    " << call.name << '\n';
     context.ostream << pop_calls.str();
 
+    context.dropped_reassignable = dropped_reassignable;
+
     return {
-        .return_dest = std::move(ret)
+        .return_dest = std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax)
     };
 }

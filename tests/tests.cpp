@@ -66,7 +66,7 @@ void hello_world_lex() {
     ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
 //    ir::output::emit(std::cout, parsed);
 
-    backend::codegen::generate(parsed, ofile);
+    backend::codegen::generate(parsed,  ofile);
 
     asm("nop");
 }

@@ -38,7 +38,7 @@ static void backend::codegen::gen_defined_functions(std::ostream &ostream, const
 }
 
 static void backend::codegen::gen_function(std::ostream &ostream, const ir::global::function &function) {
-    ostream << "global " << function.name << '\n';
+    ostream << "\nglobal " << function.name << "\n\n";
     ostream << function.name << ':' << '\n';
 
     std::stringstream ss;
@@ -98,15 +98,16 @@ static void backend::codegen::gen_function(std::ostream &ostream, const ir::glob
     }
 
     finish:
+    ostream << "    push    rbp" << '\n';
+    ostream << "    mov     rbp, rsp" << '\n';
+
     if (context.current_stack_size != 0) {
-        ostream << "    push rbp" << '\n';
-        ostream << "    mov rbp, rsp" << '\n';
-        ostream << "    sub rsp, " << context.current_stack_size << '\n';
+        ostream << "    sub     rsp, " << context.current_stack_size << '\n';
     }
 
     std::vector<const char*> dropped_vars;
 
-    for (int i = 1; i < register_count; i++) {
+    for (size_t i = 1; i < register_count; i++) {
         if (context.register_tampered[i]) {
             const auto *reg = backend::codegen::register_as_string((register_t) i, 8);
 
@@ -120,11 +121,11 @@ static void backend::codegen::gen_function(std::ostream &ostream, const ir::glob
         auto code = ss.str();
 
         while (code.find("ret") != std::string::npos) {
-            code.replace(code.find("leave\n\tret"), 10, "jmp .__int_end");
+            code.replace(code.find("leave\n\tret"), 10, "jmp     .__int_end");
         }
 
         for (const auto *reg : dropped_vars) {
-            ostream << "    push " << reg << '\n';
+            ostream << "    push    " << reg << '\n';
         }
 
         ostream << code;
@@ -140,7 +141,7 @@ static void backend::codegen::gen_function(std::ostream &ostream, const ir::glob
 }
 
 static backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
-    std::vector<std::unique_ptr<backend::codegen::literal>> literals;
+    std::vector<literal> literals;
     std::vector<const vptr*> operands;
 
     for (const auto& operand : instruction.operands) {
@@ -148,12 +149,10 @@ static backend::codegen::instruction_return backend::codegen::gen_instruction(ba
             const auto &literal = std::get<ir::int_literal>(operand.val);
 
             literals.emplace_back(
-                    std::make_unique<backend::codegen::literal>(
-                            std::to_string(literal.value)
-                    )
+            std::to_string(literal.value)
             );
 
-            operands.push_back(literals.back().get());
+            operands.push_back(&literals.back());
         } else if (std::holds_alternative<ir::variable>(operand.val)) {
             const auto &variable = std::get<ir::variable>(operand.val);
 
