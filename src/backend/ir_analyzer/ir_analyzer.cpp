@@ -1,7 +1,9 @@
 #include "ir_analyzer.hpp"
+
 #include "node_metadata.hpp"
-#include "../../ir/nodes.hpp"
 #include "scope_analyzer.hpp"
+
+void add_empty_metadata(ir::root &root);
 
 void backend::analyze_ir(ir::root &root) {
     add_empty_metadata(root);
@@ -11,13 +13,13 @@ void backend::analyze_ir(ir::root &root) {
     }
 }
 
-void backend::add_empty_metadata(ir::root &root) {
+void add_empty_metadata(ir::root &root) {
     for (auto &function : root.functions) {
         function.metadata = std::make_unique<backend::function_metadata>(function);
 
         for (auto &block : function.blocks) {
             for (auto &instruction : block.instructions) {
-                instruction.metadata = std::make_unique<instruction_metadata>(instruction);
+                instruction.metadata = std::make_unique<backend::instruction_metadata>(instruction);
             }
         }
     }
