@@ -2,6 +2,8 @@
 #include <memory>
 #include <fstream>
 #include <sstream>
+#include <chrono>
+#include <thread>
 
 #include "../src/ir/nodes.hpp"
 #include "../src/backend/ir_analyzer/ir_analyzer.hpp"
@@ -10,6 +12,8 @@
 #include "../src/ir/input/lexer.hpp"
 #include "../src/backend/debug/emitter_attachments.hpp"
 #include "../src/backend/codegen/codegen.hpp"
+#include "../src/exec/executor.hpp"
+#include "../src/debug/assert.hpp"
 
 void io_stack_test() {
     std::ifstream file { "../examples/read_write_exact.ir" };
@@ -64,9 +68,14 @@ void hello_world_lex() {
     backend::analyze_ir(parsed);
 
     ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
-//    ir::output::emit(std::cout, parsed);
-
     backend::codegen::generate(parsed,  ofile);
+
+    file.close();
+    ofile.close();
+
+    auto exit_code = exec::execute("../examples/fibonacci.asm");
+
+    debug::assert(exit_code == 55, "Fibonacci failed");
 
     asm("nop");
 }
