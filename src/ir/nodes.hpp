@@ -202,7 +202,7 @@ namespace ir {
         inline const char* icmp_str(icmp_type type) {
             switch (type) {
                 case eq: return "eq";
-                case neq: return "ne";
+                case neq: return "neq";
 
                 case slt: return "slt";
                 case sgt: return "sgt";
@@ -255,6 +255,30 @@ namespace ir {
         struct ret : instruction {
             PRINT_DEF("ret");
             ~ret() override = default;
+        };
+
+        enum arithmetic_type {
+            add, sub, mul, div, mod,
+        };
+
+        inline const char* arithmetic_name(arithmetic_type type) {
+            switch (type) {
+                case add: return "add";
+                case sub: return "sub";
+                case mul: return "mul";
+                case div: return "div";
+                case mod: return "mod";
+            }
+        }
+
+        struct arithmetic : instruction {
+            arithmetic_type type;
+
+            explicit arithmetic(arithmetic_type type)
+                : type(type) {}
+
+            PRINT_DEF(arithmetic_name(type));
+            ~arithmetic() override = default;
         };
 
         /**

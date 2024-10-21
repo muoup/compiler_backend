@@ -1,3 +1,8 @@
+define fn i32 main()
+    %1 = call fib 10
+    ret %1
+end
+
 define fn i32 fib(i32 %n)
     %ptr 1 = allocate 4
     store 4 %n, %ptr 1
@@ -15,5 +20,5 @@ define fn i32 fib(i32 %n)
     %9 = sub %8, 2
     %10 = call fib %9
     %11 = add %10, %7
-    ret %5
+    ret %11
 end

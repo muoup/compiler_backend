@@ -9,6 +9,7 @@
 #include "../src/ir/output/ir_emitter.hpp"
 #include "../src/ir/input/lexer.hpp"
 #include "../src/backend/debug/emitter_attachments.hpp"
+#include "../src/backend/codegen/codegen.hpp"
 
 void io_stack_test() {
     std::ifstream file { "../examples/read_write_exact.ir" };
@@ -31,7 +32,7 @@ void io_stack_test() {
     auto new_ir = ss.str();
     auto new_tokens = ir::lexer::lex(new_ir);
 
-    for (auto i = 0; i < std::min(tokens.size(), new_tokens.size()); i++) {
+    for (size_t i = 0; i < std::min(tokens.size(), new_tokens.size()); i++) {
         if (tokens[i].value == new_tokens[i].value)
             continue;
 
@@ -49,6 +50,7 @@ void io_stack_test() {
 
 void hello_world_lex() {
     std::ifstream file { "../examples/fibonacci.ir" };
+    std::ofstream ofile { "../examples/fibonacci.asm" };
 
     if (!file.is_open()) {
         std::cerr << "Failed to open file" << std::endl;
@@ -62,9 +64,9 @@ void hello_world_lex() {
     backend::analyze_ir(parsed);
 
     ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
+//    ir::output::emit(std::cout, parsed);
 
-    ir::output::emit(std::cout, parsed);
-    std::cout << '\n';
+    backend::codegen::generate(parsed,  ofile);
 
     asm("nop");
 }

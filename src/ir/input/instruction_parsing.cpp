@@ -11,6 +11,14 @@ auto generate_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
     return ir::block::block_instruction { std::move(instruction), std::move(values) };
 }
 
+template <typename InstructionType, typename... Args>
+auto generate_instruction(parser::lex_iter_t &start, parser::lex_iter_t end, Args... args) {
+    return ir::block::block_instruction {
+        std::make_unique<InstructionType>(args...),
+        parser::parse_operands(start, end)
+    };
+}
+
 ir::block::block_instruction parser::parse_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
     std::optional<ir::variable> assignment {};
 
@@ -41,9 +49,12 @@ static ir::block::block_instruction parser::parse_unassigned_instruction(parser:
     else if (instruction == "branch")
         return generate_instruction<ir::block::branch, std::string, std::string>(start, end);
     else if (instruction == "add")
-        return generate_instruction<ir::block::add>(start, end);
+        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::add);
     else if (instruction == "sub")
-        return generate_instruction<ir::block::sub>(start, end);
+        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::sub);
+    else if (instruction == "mul")
+        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::mul);
+    // TODO: idiv and irem
     else if (instruction == "ret")
         return generate_instruction<ir::block::ret>(start, end);
     else if (instruction == "call")

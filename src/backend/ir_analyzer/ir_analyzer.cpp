@@ -22,9 +22,3 @@ void backend::add_empty_metadata(ir::root &root) {
         }
     }
 }
-
-backend::instruction_metadata::instruction_metadata(const ir::block::block_instruction &instruction)
-    : instruction(instruction) {}
-
-backend::function_metadata::function_metadata(const ir::global::function &function)
-    : function(function) {}
