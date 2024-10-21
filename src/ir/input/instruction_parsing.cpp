@@ -1,7 +1,10 @@
-#include "instruction_parsing.hpp"
+#include "element_parsers.hpp"
+
 #include "../../debug/assert.hpp"
 
 using namespace ir;
+
+using lex_iter_t = parser::lex_iter_t;
 
 template <typename InstructionType, typename... Misc>
 auto generate_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
@@ -35,7 +38,7 @@ ir::block::block_instruction parser::parse_instruction(parser::lex_iter_t &start
     return instruction;
 }
 
-static ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
+ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
     const auto &instruction = start++->value;
 
     if (instruction == "allocate")
@@ -64,13 +67,13 @@ static ir::block::block_instruction parser::parse_unassigned_instruction(parser:
     throw std::runtime_error("Unreachable");
 }
 
-static uint8_t parser::parse_uint8_t(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
+uint8_t parser::parse_uint8_t(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     debug::assert(start->type == lexer::token_type::number, "Expected integer");
 
     return std::stoi(start++->value);
 }
 
-static std::vector<value> parser::parse_operands(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
+std::vector<value> parser::parse_operands(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     std::vector<value> operands {};
 
     if (start->type == lexer::token_type::break_line)
@@ -86,7 +89,7 @@ static std::vector<value> parser::parse_operands(ir::parser::lex_iter_t &start, 
     return operands;
 }
 
-static value parser::parse_value(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
+value parser::parse_value(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     if (start->value == "%") {
         return ir::value { parse_variable(start, end) };
     } else if (start->type == lexer::token_type::number) {
@@ -100,7 +103,7 @@ static value parser::parse_value(ir::parser::lex_iter_t &start, ir::parser::lex_
     throw std::runtime_error("Value parsing failed");
 }
 
-static variable parser::parse_variable(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t) {
+variable parser::parse_variable(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t) {
     debug::assert(start++->value == "%", "Expected %");
 
     bool is_ptr = start->value == "ptr" && (start++, true);
@@ -109,7 +112,7 @@ static variable parser::parse_variable(ir::parser::lex_iter_t &start, ir::parser
     return ir::variable { std::move(value), is_ptr };
 }
 
-static ir::block::icmp_type parser::parse_icmp_type(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t) {
+ir::block::icmp_type parser::parse_icmp_type(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t) {
     const auto &op = start++->value;
 
     if      (op == "eq") return ir::block::icmp_type::eq;
