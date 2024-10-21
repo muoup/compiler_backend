@@ -13,7 +13,7 @@ void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
     gen_defined_functions(ostream, root.functions);
 }
 
-static void backend::codegen::gen_extern_functions(std::ostream &ostream, const std::vector<ir::global::extern_function> &extern_functions) {
+void backend::codegen::gen_extern_functions(std::ostream &ostream, const std::vector<ir::global::extern_function> &extern_functions) {
     ostream << "section .external_functions" << '\n';
 
     for (const auto &extern_function : extern_functions) {
@@ -21,7 +21,7 @@ static void backend::codegen::gen_extern_functions(std::ostream &ostream, const 
     }
 }
 
-static void backend::codegen::gen_global_strings(std::ostream &ostream, const std::vector<ir::global::global_string> &global_strings) {
+void backend::codegen::gen_global_strings(std::ostream &ostream, const std::vector<ir::global::global_string> &global_strings) {
     ostream << "section .global_strings" << '\n';
 
     for (const auto &global_string : global_strings) {
@@ -29,7 +29,7 @@ static void backend::codegen::gen_global_strings(std::ostream &ostream, const st
     }
 }
 
-static void backend::codegen::gen_defined_functions(std::ostream &ostream, const std::vector<ir::global::function> &functions) {
+void backend::codegen::gen_defined_functions(std::ostream &ostream, const std::vector<ir::global::function> &functions) {
     ostream << "section .text" << '\n';
 
     for (const auto &function : functions) {
@@ -37,7 +37,7 @@ static void backend::codegen::gen_defined_functions(std::ostream &ostream, const
     }
 }
 
-static void backend::codegen::gen_function(std::ostream &ostream, const ir::global::function &function) {
+void backend::codegen::gen_function(std::ostream &ostream, const ir::global::function &function) {
     ostream << "\nglobal " << function.name << "\n\n";
     ostream << function.name << ':' << '\n';
 
@@ -140,7 +140,7 @@ static void backend::codegen::gen_function(std::ostream &ostream, const ir::glob
     }
 }
 
-static backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
+backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
     std::vector<literal> literals;
     std::vector<const vptr*> operands;
 
@@ -184,6 +184,3 @@ static backend::codegen::instruction_return backend::codegen::gen_instruction(ba
         .valid = false
     };
 }
-
-
-
