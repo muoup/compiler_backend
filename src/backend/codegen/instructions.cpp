@@ -137,13 +137,13 @@ const char* arithmetic_command(ir::block::arithmetic_type type) {
     switch (type) {
         using enum ir::block::arithmetic_type;
 
-        case iadd:
+        case add:
             return "add";
-        case isub:
+        case sub:
             return "sub";
-        case imul:
+        case mul:
             return "imul";
-        case idiv:
+        case div:
             return "idiv";
 
         default:

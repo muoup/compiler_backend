@@ -258,16 +258,16 @@ namespace ir {
         };
 
         enum arithmetic_type {
-            iadd, isub, imul, idiv, imod
+            add, sub, mul, div, mod,
         };
 
         inline const char* arithmetic_name(arithmetic_type type) {
             switch (type) {
-                case iadd: return "iadd";
-                case isub: return "isub";
-                case imul: return "imul";
-                case idiv: return "idiv";
-                case imod: return "imod";
+                case add: return "add";
+                case sub: return "sub";
+                case mul: return "mul";
+                case div: return "div";
+                case mod: return "mod";
             }
         }
 

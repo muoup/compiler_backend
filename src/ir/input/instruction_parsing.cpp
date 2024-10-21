@@ -48,10 +48,13 @@ static ir::block::block_instruction parser::parse_unassigned_instruction(parser:
         return generate_instruction<ir::block::icmp, ir::block::icmp_type>(start, end);
     else if (instruction == "branch")
         return generate_instruction<ir::block::branch, std::string, std::string>(start, end);
-    else if (instruction == "iadd")
-        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::iadd);
-    else if (instruction == "isub")
-        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::isub);
+    else if (instruction == "add")
+        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::add);
+    else if (instruction == "sub")
+        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::sub);
+    else if (instruction == "mul")
+        return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::mul);
+    // TODO: idiv and irem
     else if (instruction == "ret")
         return generate_instruction<ir::block::ret>(start, end);
     else if (instruction == "call")
