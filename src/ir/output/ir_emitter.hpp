@@ -28,12 +28,12 @@ namespace ir::output {
 
     void emit(std::ostream &ostream, const ir::root& root);
 
-    static void emit_function(std::ostream &ostream, const ir::global::function &function);
-    static void emit_external_function(std::ostream &ostream, const ir::global::extern_function &extern_function);
-    static void emit_global_string(std::ostream &ostream, const ir::global::global_string &global_string);
+    void emit_function(std::ostream &ostream, const ir::global::function &function);
+    void emit_external_function(std::ostream &ostream, const ir::global::extern_function &extern_function);
+    void emit_global_string(std::ostream &ostream, const ir::global::global_string &global_string);
 
-    static void emit_parameters(std::ostream &ostream, const std::vector<ir::global::parameter> &parameters);
-    static void emit_parameter(std::ostream &ostream, const ir::global::parameter& parameters);
+    void emit_parameters(std::ostream &ostream, const std::vector<ir::global::parameter> &parameters);
+    void emit_parameter(std::ostream &ostream, const ir::global::parameter& parameters);
 
-    static void emit_param_type(std::ostream &ostream, const ir::global::parameter_type type);
+    void emit_param_type(std::ostream &ostream, ir::global::parameter_type type);
 }

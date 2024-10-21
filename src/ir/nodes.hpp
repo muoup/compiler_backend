@@ -70,7 +70,7 @@ namespace ir {
 
     namespace block {
         template <typename... args>
-        static inline void __inst_print(std::ostream& ostream, const char* node_name, args... arg) {
+        inline void __inst_print(std::ostream& ostream, const char* node_name, args... arg) {
             ostream << node_name;
             ((ostream << " " << arg), ...);
         }

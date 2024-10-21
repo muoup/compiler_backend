@@ -64,11 +64,11 @@ namespace backend::codegen {
 
     void generate(const ir::root& root, std::ostream& ostream);
 
-    static void gen_global_strings(std::ostream& ostream, const std::vector<ir::global::global_string> &global_strings);
-    static void gen_extern_functions(std::ostream& ostream, const std::vector<ir::global::extern_function> &extern_functions);
-    static void gen_defined_functions(std::ostream &ostream, const std::vector<ir::global::function> &functions);
+    void gen_global_strings(std::ostream& ostream, const std::vector<ir::global::global_string> &global_strings);
+    void gen_extern_functions(std::ostream& ostream, const std::vector<ir::global::extern_function> &extern_functions);
+    void gen_defined_functions(std::ostream &ostream, const std::vector<ir::global::function> &functions);
 
-    static void gen_function(std::ostream &ostream, const ir::global::function &function);
+    void gen_function(std::ostream &ostream, const ir::global::function &function);
 
-    static instruction_return gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction);
+    instruction_return gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction);
 }
