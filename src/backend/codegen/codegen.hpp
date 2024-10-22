@@ -6,27 +6,9 @@
 #include "registers.hpp"
 #include "valuegen.hpp"
 
-#include "../../ir/nodes.hpp"
 #include "asmgen/asm_nodes.hpp"
-
-namespace ir {
-    struct root;
-
-    namespace global {
-        struct global_string;
-        struct extern_function;
-    }
-
-    namespace block {
-        struct block_instruction;
-    }
-}
 #include "../../ir/node_prototypes.hpp"
 #include "../ir_analyzer/node_metadata.hpp"
-
-namespace backend::as {
-    struct label;
-}
 
 namespace backend::codegen {
     struct instruction_return;
