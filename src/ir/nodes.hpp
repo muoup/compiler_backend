@@ -257,7 +257,7 @@ namespace ir {
             ~ret() override = default;
         };
 
-        enum arithmetic_type {
+        enum arithmetic_type : uint8_t {
             add, sub, mul, div, mod,
         };
 
@@ -268,6 +268,8 @@ namespace ir {
                 case mul: return "mul";
                 case div: return "div";
                 case mod: return "mod";
+
+                default: throw std::runtime_error("no such arithmetic type");
             }
         }
 
@@ -279,24 +281,6 @@ namespace ir {
 
             PRINT_DEF(arithmetic_name(type));
             ~arithmetic() override = default;
-        };
-
-        /**
-         *  Basic algebraic operator. Adds all arguments provided and
-         *  stores their result in the assignment variable.
-         */
-        struct add : instruction {
-            PRINT_DEF("add");
-            ~add() override = default;
-        };
-
-        /**
-         *  Basic algebraic operator. Adds all arguments provided and
-         *  stores their result in the assignment variable.
-         */
-        struct sub : instruction {
-            PRINT_DEF("sub");
-            ~sub() override  = default;
         };
     }
 

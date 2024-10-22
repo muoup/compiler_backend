@@ -3,22 +3,7 @@
 #include <ostream>
 #include <vector>
 
-namespace ir {
-    struct root;
-
-    namespace global {
-        struct function;
-        struct extern_function;
-        struct global_string;
-
-        struct parameter;
-        enum parameter_type : uint8_t;
-    }
-
-    namespace block {
-        struct block_instruction;
-    }
-}
+#include "../../ir/node_prototypes.hpp"
 
 namespace ir::output {
     template <typename T>

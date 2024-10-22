@@ -1,7 +1,7 @@
 #include "valuegen.hpp"
 #include "codegen.hpp"
 
-#include "../ir_analyzer/node_metadata.hpp"
+#include "../../ir/nodes.hpp"
 
 #include <sstream>
 
