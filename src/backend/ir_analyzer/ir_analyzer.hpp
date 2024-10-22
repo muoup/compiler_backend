@@ -1,9 +1,7 @@
 #pragma once
 
-namespace ir {
-    struct root;
-}
+#include "../../ir/node_prototypes.hpp"
 
 namespace backend {
-    void analyze_ir(ir::root &root);
+    void analyze_ir(struct ir::root &root);
 }

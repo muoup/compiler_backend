@@ -21,6 +21,8 @@ namespace ir {
         struct block_instruction;
     }
 }
+#include "../../ir/node_prototypes.hpp"
+#include "../ir_analyzer/node_metadata.hpp"
 
 namespace backend::as {
     struct label;

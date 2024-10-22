@@ -5,18 +5,7 @@
 #include <cstdint>
 #include <variant>
 
-namespace ir {
-    struct root;
-
-    namespace global {
-        struct function;
-    }
-
-    namespace block {
-        struct block_instruction;
-        struct block;
-    }
-}
+#include "../../ir/node_prototypes.hpp"
 
 namespace backend {
     struct instruction_metadata {

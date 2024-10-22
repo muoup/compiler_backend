@@ -303,7 +303,7 @@ namespace ir {
             ~ret() override = default;
         };
 
-        enum arithmetic_type {
+        enum arithmetic_type : uint8_t {
             add, sub, mul, div, mod,
         };
 
@@ -314,6 +314,8 @@ namespace ir {
                 case mul: return "mul";
                 case div: return "div";
                 case mod: return "mod";
+
+                default: throw std::runtime_error("no such arithmetic type");
             }
 
             throw std::runtime_error("no such arithmetic type");
