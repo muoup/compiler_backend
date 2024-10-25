@@ -2,8 +2,17 @@
 #include "codegen.hpp"
 
 #include "../ir_analyzer/node_metadata.hpp"
+#include "dataflow.hpp"
 
 #include <sstream>
+
+backend::codegen::virtual_pointer backend::codegen::force_find_register(backend::codegen::function_context &context) {
+    if (auto find = backend::codegen::find_register(context))
+        return find;
+
+    backend::codegen::empty_register(context, backend::codegen::register_t::rax);
+    return std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax);
+}
 
 backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::codegen::function_context &context, size_t size) {
     context.current_stack_size += size;

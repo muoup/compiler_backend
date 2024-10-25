@@ -17,13 +17,13 @@ extern fn [name]({(param_type %|%ptr )param_name}...){ -> return_type}:
     A label for branching instructions to jump to.
 
 %ptr [ptr] = allocate [size]:
-    Ensures there is space in memory for data of the given size.
+    Ensures there is space in relmem for data of the given size.
 
 store [size] %[value_var], %ptr [ptr]:
-    Stores a value_var in memory at the given ptr_var.
+    Stores a value_var in relmem at the given ptr_var.
 
 %[value_var] = load [size] %ptr [ptr]:
-    Loads a value_var from memory at the given ptr_var.
+    Loads a value_var from relmem at the given ptr_var.
 
 %[value_var] = icmp [size] [condition] %[value1], %[value2]:
     Compares two values for use with an if branching instruction.

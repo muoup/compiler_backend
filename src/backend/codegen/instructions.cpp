@@ -8,6 +8,7 @@
 
 #include "../../debug/assert.hpp"
 #include "dataflow.hpp"
+#include "asmgen/asm_nodes.hpp"
 
 backend::codegen::instruction_return backend::codegen::gen_allocate(
     backend::codegen::function_context &context,
@@ -47,7 +48,7 @@ backend::codegen::instruction_return backend::codegen::gen_load(
     };
 }
 
-const char* jmp_inst(ir::block::icmp_type type) {
+const char* backend::codegen::jmp_inst(ir::block::icmp_type type) {
     switch (type) {
         using enum ir::block::icmp_type;
 
@@ -88,12 +89,14 @@ backend::codegen::instruction_return backend::codegen::gen_icmp(
 
     const auto *lhs = context.get_value(virtual_operands[0]);
     const auto *rhs = context.get_value(virtual_operands[1]);
-    const auto *icmp_flag = jmp_inst(icmp.type);
 
-    context.ostream << "    cmp     " << lhs->get_address(8) << ", " << rhs->get_address(8) << '\n';
+    context.add_asm_node<as::inst::cmp>(
+        as::create_operand(lhs),
+        as::create_operand(rhs)
+    );
 
     return {
-            .return_dest = std::make_unique<backend::codegen::icmp_result>(icmp_flag)
+        .return_dest = std::make_unique<backend::codegen::icmp_result>(icmp.type)
     };
 }
 
@@ -108,8 +111,14 @@ backend::codegen::instruction_return backend::codegen::gen_branch(
     const auto *icmp_result = dynamic_cast<const backend::codegen::icmp_result*>(cond);
     debug::assert(icmp_result, "Parameter of Branch is not a ICMP Result!");
 
-    context.ostream << "    " << icmp_result->flag << "     ." << branch.true_branch << '\n';
-    context.ostream << "    jmp     ." << branch.false_branch << '\n';
+    context.add_asm_node<as::inst::cond_jmp>(
+        icmp_result->flag,
+        branch.true_branch
+    );
+
+    context.add_asm_node<as::inst::jmp>(
+        branch.false_branch
+    );
 
     return {};
 }
@@ -122,17 +131,14 @@ backend::codegen::instruction_return backend::codegen::gen_return(
 
     debug::assert(virtual_operands.size() <= 1, "Invalid Parameter Count for Return");
 
-    if (virtual_operands.empty()) {
-        context.ostream << "    ret\n";
-        return {};
-    }
+    if (!virtual_operands.empty())
+        codegen::emit_move(context, rax.get(), virtual_operands[0], 8);
 
-    codegen::emit_move(context, rax.get(), virtual_operands[0], 8);
-    context.ostream << "    leave\n\tret\n";
+    context.add_asm_node<as::inst::ret>();
     return {};
 }
 
-const char* arithmetic_command(ir::block::arithmetic_type type) {
+const char* backend::codegen::arithmetic_command(ir::block::arithmetic_type type) {
     switch (type) {
         using enum ir::block::arithmetic_type;
 
@@ -159,10 +165,13 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic(
     const auto rhs = context.get_value(virtual_operands[1]);
 
     auto reg = backend::codegen::find_register(context);
-    auto op = arithmetic_command(arithmetic.type);
-
     backend::codegen::emit_move(context, reg.get(), virtual_operands[0], 8);
-    context.ostream << "    " << op << "     " << reg->get_address(8) << ", " << rhs->get_address(8) << '\n';
+
+    context.add_asm_node<as::inst::arithmetic>(
+            arithmetic.type,
+            as::create_operand(reg.get()),
+            as::create_operand(rhs)
+    );
 
     return {
         .return_dest = std::move(reg)
@@ -177,7 +186,6 @@ backend::codegen::instruction_return backend::codegen::gen_call(
     bool dropped_reassignable = context.dropped_reassignable;
     context.dropped_reassignable = false;
 
-    std::stringstream pop_calls {};
 
     backend::codegen::empty_register(context, backend::codegen::register_t::rax);
 
@@ -187,9 +195,7 @@ backend::codegen::instruction_return backend::codegen::gen_call(
         move_to_register(context, virtual_operands[i], param_reg_id);
     }
 
-    context.ostream << "    call    " << call.name << '\n';
-    context.ostream << pop_calls.str();
-
+    context.add_asm_node<as::inst::call>(call.name);
     context.dropped_reassignable = dropped_reassignable;
 
     return {

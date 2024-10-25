@@ -1,7 +1,7 @@
 #pragma once
 
 #include "registers.hpp"
-#include "valuegen.hpp"
+#include "../../ir/nodes.hpp"
 
 #include <string>
 #include <memory>
@@ -17,7 +17,9 @@ namespace backend::codegen {
     using virtual_pointer = std::unique_ptr<vptr>;
 
     virtual_pointer stack_allocate(backend::codegen::function_context &context, size_t size);
+
     backend::codegen::virtual_pointer find_register(backend::codegen::function_context &context);
+    backend::codegen::virtual_pointer force_find_register(backend::codegen::function_context &context);
 
     std::string get_stack_prefix(size_t size);
 
@@ -51,26 +53,26 @@ namespace backend::codegen {
     };
 
     struct literal : vptr {
-        std::string value;
+        uint64_t value;
 
-        explicit literal(std::string value) : value(std::move(value)) {}
+        explicit literal(uint64_t value) : value(value) {}
         ~literal() override = default;
 
         [[nodiscard]] std::string get_address(size_t size) const override {
-            return value;
+            return std::to_string(value);
         }
     };
 
     struct icmp_result : vptr {
-        const char* flag;
+        ir::block::icmp_type flag;
 
-        explicit icmp_result(const char* flag) : flag(flag) {}
+        explicit icmp_result(ir::block::icmp_type flag) : flag(flag) {}
         ~icmp_result() override = default;
 
         [[nodiscard]] std::string get_address(size_t size) const override {
             throw std::runtime_error("ICMP result cannot be used as an address");
         }
-        size_t get_size() const override {
+        [[nodiscard]] size_t get_size() const override {
             throw std::runtime_error("ICMP result does not have a size");
         }
     };
