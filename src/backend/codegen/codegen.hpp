@@ -7,6 +7,7 @@
 #include "valuegen.hpp"
 
 #include "../../ir/nodes.hpp"
+#include "asmgen/asm_nodes.hpp"
 
 namespace ir {
     struct root;
@@ -21,8 +22,8 @@ namespace ir {
     }
 }
 
-namespace backend::as::inst {
-    struct asm_node;
+namespace backend::as {
+    struct label;
 }
 
 namespace backend::codegen {
@@ -31,7 +32,9 @@ namespace backend::codegen {
 
     struct function_context {
         std::ostream& ostream;
-        std::vector<std::unique_ptr<backend::as::inst::asm_node>> asm_nodes;
+        std::vector<backend::as::label> asm_blocks;
+
+        backend::as::label *current_label;
 
         const ir::global::function &current_function;
         const backend::instruction_metadata *current_instruction;
@@ -44,14 +47,9 @@ namespace backend::codegen {
 
         size_t current_stack_size = 0;
 
-        template <typename Arg>
-        auto create_node(Arg arg) {
-            return arg;
-        }
-
         template <typename T, typename... Args>
         void add_asm_node(Args... constructor_args) {
-            asm_nodes.emplace_back(std::make_unique<T>(std::move(constructor_args)...));
+            this->current_label->nodes.emplace_back(std::make_unique<T>(std::move(constructor_args)...));
         }
 
         void set_used(const vptr* value, bool used) {

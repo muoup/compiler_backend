@@ -47,6 +47,8 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
         .current_function = function,
     };
 
+    context.asm_blocks.emplace_back("__stacksave");
+    context.current_label = &context.asm_blocks.back();
     context.add_asm_node<as::inst::stack_save>();
 
     for (size_t i = 0; i < function.parameters.size(); i++){
@@ -57,7 +59,8 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
     }
 
     for (const auto &block : function.blocks) {
-        context.add_asm_node<as::inst::label>(block.name);
+        context.asm_blocks.emplace_back(block.name);
+        context.current_label = &context.asm_blocks.back();
 
         for (const auto &instruction : block.instructions) {
             for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
@@ -99,12 +102,15 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
     }
 
     finish:
-    for (const auto &inst : context.asm_nodes) {
-        if (!inst->printable())
-            continue;
+    for (const auto &block : context.asm_blocks) {
+        ostream << '.' << block.name << ":\n";
+        for (const auto &inst : block.nodes) {
+            if (!inst->printable())
+                continue;
 
-        inst->print(context);
-        context.ostream << '\n';
+            inst->print(context);
+            context.ostream << '\n';
+        }
     }
 }
 

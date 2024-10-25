@@ -282,21 +282,13 @@ namespace ir {
         };
 
         /**
-         *  Basic algebraic operator. Adds all arguments provided and
-         *  stores their result in the assignment variable.
+         *  Represents a value which differs depending on the branch taken.
          */
-        struct add : instruction {
-            PRINT_DEF("add");
-            ~add() override = default;
-        };
+        struct phi : instruction {
+            std::vector<std::string> branches;
 
-        /**
-         *  Basic algebraic operator. Adds all arguments provided and
-         *  stores their result in the assignment variable.
-         */
-        struct sub : instruction {
-            PRINT_DEF("sub");
-            ~sub() override  = default;
+            explicit phi(std::vector<std::string> branches)
+                : branches(std::move(branches)) {}
         };
     }
 
