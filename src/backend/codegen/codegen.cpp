@@ -4,6 +4,7 @@
 #include "codegen.hpp"
 #include "instructions.hpp"
 #include "../../debug/assert.hpp"
+#include "asmgen/asm_nodes.hpp"
 
 void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
     ostream << "[bits 64]\n";
@@ -41,12 +42,12 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
     ostream << "\nglobal " << function.name << "\n\n";
     ostream << function.name << ':' << '\n';
 
-    std::stringstream ss;
-
     backend::codegen::function_context context {
-        .ostream = ss,
+        .ostream = ostream,
         .current_function = function,
     };
+
+    context.add_asm_node<as::inst::stack_save>();
 
     for (size_t i = 0; i < function.parameters.size(); i++){
         auto reg = backend::codegen::param_register(i);
@@ -56,7 +57,7 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
     }
 
     for (const auto &block : function.blocks) {
-        context.ostream << "." << block.name << ":\n";
+        context.add_asm_node<as::inst::label>(block.name);
 
         for (const auto &instruction : block.instructions) {
             for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
@@ -98,45 +99,12 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
     }
 
     finish:
-    ostream << "    push    rbp" << '\n';
-    ostream << "    mov     rbp, rsp" << '\n';
+    for (const auto &inst : context.asm_nodes) {
+        if (!inst->printable())
+            continue;
 
-    if (context.current_stack_size != 0) {
-        ostream << "    sub     rsp, " << context.current_stack_size << '\n';
-    }
-
-    std::vector<const char*> dropped_vars;
-
-    for (size_t i = 1; i < register_count; i++) {
-        if (context.register_tampered[i]) {
-            const auto *reg = backend::codegen::register_as_string((register_t) i, 8);
-
-            dropped_vars.push_back(reg);
-        }
-    }
-
-    const bool registers_tampered = !dropped_vars.empty();
-
-    if (registers_tampered) {
-        auto code = ss.str();
-
-        while (code.find("ret") != std::string::npos) {
-            code.replace(code.find("leave\n\tret"), 10, "jmp     .__int_end");
-        }
-
-        for (const auto *reg : dropped_vars) {
-            ostream << "    push    " << reg << '\n';
-        }
-
-        ostream << code;
-        ostream << ".__int_end:\n";
-
-        for (const auto *dropped_var : std::ranges::reverse_view(dropped_vars)) {
-            ostream << "    pop " << dropped_var << '\n';
-        }
-        ostream << "    leave\n\tret";
-    } else {
-        ostream << ss.str();
+        inst->print(context);
+        context.ostream << '\n';
     }
 }
 
@@ -149,7 +117,7 @@ backend::codegen::instruction_return backend::codegen::gen_instruction(backend::
 
             context.value_map.emplace(
                 std::to_string(literal.value),
-                std::make_unique<backend::codegen::literal>(std::to_string(literal.value))
+                std::make_unique<backend::codegen::literal>(literal.value)
             );
 
             operands.emplace_back(

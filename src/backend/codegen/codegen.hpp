@@ -21,14 +21,17 @@ namespace ir {
     }
 }
 
+namespace backend::as::inst {
+    struct asm_node;
+}
+
 namespace backend::codegen {
     struct instruction_return;
     struct vptr;
 
-    using vptr_gen = const vptr*(*)();
-
     struct function_context {
         std::ostream& ostream;
+        std::vector<std::unique_ptr<backend::as::inst::asm_node>> asm_nodes;
 
         const ir::global::function &current_function;
         const backend::instruction_metadata *current_instruction;
@@ -40,6 +43,16 @@ namespace backend::codegen {
         bool register_tampered[register_count] {};
 
         size_t current_stack_size = 0;
+
+        template <typename Arg>
+        auto create_node(Arg arg) {
+            return arg;
+        }
+
+        template <typename T, typename... Args>
+        void add_asm_node(Args... constructor_args) {
+            asm_nodes.emplace_back(std::make_unique<T>(std::move(constructor_args)...));
+        }
 
         void set_used(const vptr* value, bool used) {
             if (auto *reg_storage = dynamic_cast<const register_storage*>(value)) {

@@ -36,7 +36,7 @@ namespace ir {
     /**
      *  Seen in IR as either %[name] or %ptr [name]. Represents data
      *  stored somewhere in storage. There is no guarantee it will be
-     *  stored in a register/memory, or even that it is directly stored
+     *  stored in a register/relmem, or even that it is directly stored
      *  at all.
      */
     struct variable {
@@ -121,13 +121,13 @@ namespace ir {
         };
 
         /**
-         *  Guarantees that there is a space in memory of @size bytes that can
-         *  be written and read from without the possibility of said memory
-         *  being overwritten, and returns a logical pointer to said memory.
+         *  Guarantees that there is a space in relmem of @size bytes that can
+         *  be written and read from without the possibility of said relmem
+         *  being overwritten, and returns a logical pointer to said relmem.
          *
-         *  This does not necessarily guarantee stack memory, nor does it
-         *  guarantee that unreferenced parts of this memory will actually
-         *  exist, only that there is some referencable memory of @size bytes.
+         *  This does not necessarily guarantee stack relmem, nor does it
+         *  guarantee that unreferenced parts of this relmem will actually
+         *  exist, only that there is some referencable relmem of @size bytes.
          */
         struct allocate : instruction {
             size_t size;
@@ -141,7 +141,7 @@ namespace ir {
 
         /**
          *  Given a logical pointer and an operand of @size bytes, stores
-         *  that value in the memory referenced by the pointer.
+         *  that value in the relmem referenced by the pointer.
          */
         struct store : instruction {
             uint64_t size;
@@ -155,7 +155,7 @@ namespace ir {
 
         /**
          *  Given a logical pointer, returns @size bytes of data from the
-         *  referenced memory.
+         *  referenced relmem.
          */
         struct load : instruction {
             uint64_t size;
@@ -235,7 +235,7 @@ namespace ir {
 
         /**
          *  Invokes a subroutine. Will ensure that all parameters specified are stored in the appropriate
-         *  memory location so that the subroutine can unconditionally reference the parameters it requires.
+         *  relmem location so that the subroutine can unconditionally reference the parameters it requires.
          */
         struct call : instruction {
             std::string name;
