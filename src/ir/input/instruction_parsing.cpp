@@ -62,6 +62,8 @@ ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_it
         return generate_instruction<ir::block::ret>(start, end);
     else if (instruction == "call")
         return generate_instruction<ir::block::call, std::string>(start, end);
+    else if (instruction == "phi")
+        return generate_instruction<ir::block::phi, std::string, std::string>(start, end);
     else debug::assert(false, (std::string("Unknown instruction: ") + instruction).c_str());
 
     throw std::runtime_error("Unreachable");

@@ -40,8 +40,9 @@ namespace backend::codegen {
         const backend::instruction_metadata *current_instruction;
 
         std::unordered_map<std::string, virtual_pointer> value_map;
-        bool dropped_reassignable = true;
+        std::unordered_map<std::string, virtual_pointer> dropped_at_map;
 
+        bool dropped_reassignable = true;
         bool used_register[register_count] {};
         bool register_tampered[register_count] {};
 
@@ -63,7 +64,8 @@ namespace backend::codegen {
             value_map[std::string { name }] = std::move(value);
         }
 
-        void unmap_value(const char* name) {
+        void drop_value(const char* name) {
+            dropped_at_map.emplace(name, std::move(value_map.at(name)));
             set_used(value_map.at(name).get(), false);
             value_map.erase(name);
         }

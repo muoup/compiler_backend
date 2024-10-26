@@ -60,6 +60,11 @@ namespace backend::codegen {
             const ir::block::call &call,
             const v_operands &virtual_operands
     );
+    instruction_return gen_phi(
+            backend::codegen::function_context &context,
+            const ir::block::phi &phi,
+            const v_operands &virtual_operands
+    );
 
     const char* jmp_inst(ir::block::icmp_type type);
     const char* arithmetic_command(ir::block::arithmetic_type type);
