@@ -87,8 +87,8 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
 
                 const auto &var = std::get<ir::variable>(instruction.operands[i].val);
 
-                context.unmap_value(
-                    var.name.c_str()
+                context.drop_value(
+                var.name.c_str()
                 );
             }
 

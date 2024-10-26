@@ -289,6 +289,18 @@ namespace ir {
 
             explicit phi(std::vector<std::string> branches)
                 : branches(std::move(branches)) {}
+            explicit phi(std::string branch1, std::string branch2)
+                    : branches { std::move(branch1), std::move(branch2) } {}
+
+            void print(std::ostream &ostream) const override {
+                __inst_print(ostream, "phi");
+
+                for (const auto &branch : branches) {
+                    ostream << " " << branch;
+                }
+            };
+
+            ~phi() override = default;
         };
     }
 

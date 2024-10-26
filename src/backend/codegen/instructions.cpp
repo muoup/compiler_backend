@@ -126,7 +126,8 @@ backend::codegen::instruction_return backend::codegen::gen_branch(
 backend::codegen::instruction_return backend::codegen::gen_return(
         backend::codegen::function_context &context,
         const ir::block::ret &,
-        const v_operands &virtual_operands) {
+        const v_operands &virtual_operands
+) {
     const static auto rax = std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax);
 
     debug::assert(virtual_operands.size() <= 1, "Invalid Parameter Count for Return");
@@ -159,7 +160,8 @@ const char* backend::codegen::arithmetic_command(ir::block::arithmetic_type type
 backend::codegen::instruction_return backend::codegen::gen_arithmetic(
         backend::codegen::function_context &context,
         const ir::block::arithmetic &arithmetic,
-        const v_operands &virtual_operands) {
+        const v_operands &virtual_operands
+) {
     debug::assert(virtual_operands.size() == 2, ">2 operands for arithmetic instruction not yet supported");
 
     const auto rhs = context.get_value(virtual_operands[1]);
@@ -200,5 +202,38 @@ backend::codegen::instruction_return backend::codegen::gen_call(
 
     return {
         .return_dest = std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax)
+    };
+}
+
+backend::codegen::instruction_return backend::codegen::gen_phi(
+        backend::codegen::function_context &context,
+        const ir::block::phi &phi,
+        const backend::codegen::v_operands &virtual_operands
+) {
+    debug::assert(virtual_operands.size() == phi.branches.size(), "Invalid Parameter Count for Phi");
+    auto mem = backend::codegen::find_memory(context, 8);
+
+    for (const auto &label : context.asm_blocks) {
+        std::string_view var;
+
+        for (auto i = 0; i < phi.branches.size(); i++) {
+            if (phi.branches[i] == label.name) {
+                var = virtual_operands[i];
+                goto found;
+            }
+        }
+
+        continue;
+        found:
+
+        auto reg = context.get_value(var);
+        context.add_asm_node<as::inst::mov>(
+            as::create_operand(mem.get()),
+            as::create_operand(reg)
+        );
+    }
+
+    return {
+        .return_dest = std::move(mem)
     };
 }
