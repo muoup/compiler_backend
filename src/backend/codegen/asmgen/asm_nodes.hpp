@@ -10,7 +10,8 @@ namespace backend::as {
     enum operand_types : uint8_t {
         literal,
         reg,
-        stack_mem
+        stack_mem,
+        global_ptr
     };
 
     namespace op {
@@ -118,7 +119,6 @@ namespace backend::as {
 
         struct ret : asm_node {
             ret() = default;
-
             ~ret() override = default;
 
             void print(backend::codegen::function_context &context) const override;

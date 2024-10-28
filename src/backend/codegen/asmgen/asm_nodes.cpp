@@ -54,6 +54,20 @@ namespace backend::as::op {
             return dynamic_cast<const stack_memory&>(other).rbp_off == rbp_off;
         }
     };
+
+    struct global_pointer : operand_t {
+        std::string name;
+
+        explicit global_pointer(std::string name)
+                : operand_t(operand_types::global_ptr, 8), name(std::move(name)) {}
+
+        [[nodiscard]] std::string get_address() const override {
+            return name;
+        }
+        [[nodiscard]] bool equals(const operand_t& other) override {
+            return other.type == operand_types::global_ptr;
+        }
+    };
 }
 
 namespace backend::as::inst {
@@ -100,7 +114,7 @@ namespace backend::as::inst {
 
     void jmp::print(backend::codegen::function_context &context) const {
         print_inst(context.ostream, "jmp");
-        context.ostream << label_name;
+        context.ostream << "." << label_name;
     }
 
     void cmp::print(backend::codegen::function_context &context) const {
@@ -109,7 +123,7 @@ namespace backend::as::inst {
 
     void cond_jmp::print(backend::codegen::function_context &context) const {
         print_inst(context.ostream, backend::codegen::jmp_inst(type));
-        context.ostream << branch_name;
+        context.ostream << "." << branch_name;
     }
 
     void arithmetic::print(backend::codegen::function_context &context) const {
@@ -147,6 +161,8 @@ std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const co
         return std::make_unique<op::stack_memory>(stack->rsp_off, stack->alloc_size);
     } else if (const auto *imm = dynamic_cast<const codegen::literal*>(vptr)) {
         return std::make_unique<op::imm>(imm->value, 8);
+    } else if (const auto *global = dynamic_cast<const codegen::global_pointer*>(vptr)) {
+        return std::make_unique<op::global_pointer>(global->name);
     }
 
     throw std::runtime_error("Invalid operand type");

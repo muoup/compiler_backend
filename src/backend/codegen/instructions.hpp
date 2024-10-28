@@ -17,9 +17,13 @@ namespace backend::codegen {
 
     struct instruction_return {
         std::unique_ptr<vptr> return_dest;
-        bool valid = true;
     };
 
+    instruction_return gen_literal(
+            backend::codegen::function_context &context,
+            const ir::block::literal &literal,
+            const v_operands &virtual_operands
+    );
     instruction_return gen_allocate(
             backend::codegen::function_context &context,
             const ir::block::allocate &allocate,
@@ -43,6 +47,11 @@ namespace backend::codegen {
     instruction_return gen_branch(
             backend::codegen::function_context &context,
             const ir::block::branch &branch,
+            const v_operands &virtual_operands
+    );
+    instruction_return gen_jmp(
+            backend::codegen::function_context &context,
+            const ir::block::jmp &jmp,
             const v_operands &virtual_operands
     );
     instruction_return gen_return(

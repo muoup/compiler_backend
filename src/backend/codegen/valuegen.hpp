@@ -11,8 +11,8 @@ namespace backend::codegen {
 
     struct vptr {
         virtual ~vptr() = default;
-        virtual std::string get_address(size_t size) const = 0;
-        virtual size_t get_size() const { return 8; }
+        [[nodiscard]] virtual std::string get_address(size_t size) const = 0;
+        [[nodiscard]] virtual size_t get_size() const { return 8; }
     };
     using virtual_pointer = std::unique_ptr<vptr>;
 
@@ -60,6 +60,17 @@ namespace backend::codegen {
 
         [[nodiscard]] std::string get_address(size_t size) const override {
             return std::to_string(value);
+        }
+    };
+
+    struct global_pointer : vptr {
+        std::string name;
+
+        explicit global_pointer(std::string name) : name(std::move(name)) {}
+        ~global_pointer() override = default;
+
+        [[nodiscard]] std::string get_address(size_t size) const override {
+            return name;
         }
     };
 

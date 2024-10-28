@@ -10,6 +10,19 @@
 #include "dataflow.hpp"
 #include "asmgen/asm_nodes.hpp"
 
+backend::codegen::instruction_return
+backend::codegen::gen_literal(
+        backend::codegen::function_context &context,
+        const ir::block::literal &literal,
+        const backend::codegen::v_operands &virtual_operands
+) {
+    debug::assert(virtual_operands.empty(), "Literal must have no operands");
+
+    return backend::codegen::instruction_return {
+        std::make_unique<backend::codegen::literal>(literal.value)
+    };
+}
+
 backend::codegen::instruction_return backend::codegen::gen_allocate(
     backend::codegen::function_context &context,
     const ir::block::allocate &allocate,
@@ -123,6 +136,17 @@ backend::codegen::instruction_return backend::codegen::gen_branch(
     return {};
 }
 
+backend::codegen::instruction_return backend::codegen::gen_jmp(
+        backend::codegen::function_context &context,
+        const ir::block::jmp &jmp,
+        const v_operands &virtual_operands
+) {
+    debug::assert(virtual_operands.empty(), "Invalid Parameter Count for Jump");
+
+    context.add_asm_node<as::inst::jmp>(jmp.label);
+    return {};
+}
+
 backend::codegen::instruction_return backend::codegen::gen_return(
         backend::codegen::function_context &context,
         const ir::block::ret &,
@@ -212,25 +236,54 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
 ) {
     debug::assert(virtual_operands.size() == phi.branches.size(), "Invalid Parameter Count for Phi");
     auto mem = backend::codegen::find_memory(context, 8);
+    const auto &phi_block = context.current_label->name;
 
-    for (const auto &label : context.asm_blocks) {
-        std::string_view var;
+    for (size_t op = 0; op < virtual_operands.size(); op++) {
+        const auto &target = phi.branches[op];
+        const auto &val_name = virtual_operands[op];
+        const auto &val = context.get_value(val_name);
 
-        for (auto i = 0; i < phi.branches.size(); i++) {
-            if (phi.branches[i] == label.name) {
-                var = virtual_operands[i];
-                goto found;
-            }
+        auto branch = context.find_block(target);
+        auto &nodes = context.asm_blocks[branch].nodes;
+
+        if (nodes.empty()) {
+            nodes.emplace_back(std::make_unique<as::inst::mov>(
+                as::create_operand(mem.get()),
+                as::create_operand(val)
+            ));
+            continue;
         }
 
-        continue;
-        found:
+        for (int64_t i = 0; i < nodes.size(); i++) {
+            auto iter = nodes.begin() + i;
 
-        auto reg = context.get_value(var);
-        context.add_asm_node<as::inst::mov>(
-            as::create_operand(mem.get()),
-            as::create_operand(reg)
-        );
+            if (auto *jmp = dynamic_cast<const as::inst::jmp*>(iter->get())) {
+                if (jmp->label_name != phi_block) continue;
+
+                nodes.insert(iter, std::make_unique<as::inst::mov>(
+                    as::create_operand(mem.get()),
+                    as::create_operand(val)
+                ));
+                i++;
+            } else if (auto *cond_jmp = dynamic_cast<as::inst::cond_jmp*>(iter->get())) {
+                if (cond_jmp->branch_name != phi_block) continue;
+
+                std::string temp_phi = std::string("__").append(std::to_string(branch)).append("_phi").append(val_name);
+
+                cond_jmp->branch_name = temp_phi;
+
+                auto &temp_block = context.asm_blocks.emplace_back(temp_phi);
+
+                auto cached_context = context.current_label;
+                context.current_label = &temp_block;
+
+                codegen::emit_move(context, mem.get(), val_name, 8);
+
+                context.current_label = cached_context;
+
+                temp_block.nodes.emplace_back(std::make_unique<as::inst::jmp>(val_name));
+            }
+        }
     }
 
     return {
