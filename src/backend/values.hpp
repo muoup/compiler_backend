@@ -20,12 +20,12 @@ namespace backend {
     };
 
     /**
-     * An rvalue represents a logical value being held, but not a location in relmem it resides
+     * An rvalue represents a logical value being held, but not a location in stack memory it resides
      */
     struct rvalue : value {};
 
     /**
-     * An lvalue represents a location in which relmem can be stored, and may already be stored
+     * An lvalue represents a location in which stack memory can be stored, and may already be stored
      */
     struct lvalue : value {};
 

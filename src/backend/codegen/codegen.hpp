@@ -31,6 +31,8 @@ namespace backend::codegen {
     struct vptr;
 
     struct function_context {
+        const ir::root& root;
+
         std::ostream& ostream;
         std::vector<backend::as::label> asm_blocks;
 
@@ -59,6 +61,21 @@ namespace backend::codegen {
             }
         }
 
+        const vptr* get_value(const char* name) {
+            if (value_map.contains(name)) {
+                return value_map.at(name).get();
+            }
+
+            for (auto &str : root.global_strings) {
+                if (str.name == name) {
+                    value_map[name] = std::make_unique<global_pointer>(str.name);
+                    return value_map.at(name).get();
+                }
+            }
+
+            throw std::runtime_error("Value not found");
+        }
+
         void map_value(const char* name, virtual_pointer value) {
             set_used(value.get(), true);
             value_map[std::string { name }] = std::move(value);
@@ -84,24 +101,19 @@ namespace backend::codegen {
             return value_map.at(std::string { name }).get();
         }
 
-        void unmap_to_temp(const char* name) {
-            auto temp = std::move(value_map.at(name));
-            value_map.erase(name);
-            value_map["__int__temp"] = std::move(temp);
-        }
+        int64_t find_block(std::string_view name) {
+            for (int64_t i = 0; i < (int64_t) asm_blocks.size(); i++) {
+                if (asm_blocks[i].name == name) {
+                    return i;
+                }
+            }
 
-        void override_temp(virtual_pointer ptr) {
-           value_map["__int__temp"] = std::move(ptr);
+            throw std::runtime_error("Block not found");
         }
     };
 
     void generate(const ir::root& root, std::ostream& ostream);
-
-    void gen_global_strings(std::ostream& ostream, const std::vector<ir::global::global_string> &global_strings);
-    void gen_extern_functions(std::ostream& ostream, const std::vector<ir::global::extern_function> &extern_functions);
-    void gen_defined_functions(std::ostream &ostream, const std::vector<ir::global::function> &functions);
-
-    void gen_function(std::ostream &ostream, const ir::global::function &function);
+    void gen_function(const ir::root& root, std::ostream &ostream, const ir::global::function &function);
 
     instruction_return gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction);
 }

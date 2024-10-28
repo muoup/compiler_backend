@@ -12,6 +12,9 @@ ir::root parser::parse_root(ir::parser::lex_iter_t start, ir::parser::lex_iter_t
     ir::root root {};
 
     while (start < end) {
+        while (start->type == lexer::token_type::break_line)
+            ++start;
+
         debug::assert(start->type == lexer::token_type::identifier, "Expected identifier");
 
         if (start->value == "global_string") {

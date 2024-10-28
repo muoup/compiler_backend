@@ -1,4 +1,3 @@
-#include <ranges>
 #include <sstream>
 
 #include "codegen.hpp"
@@ -9,40 +8,30 @@
 void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
     ostream << "[bits 64]\n";
 
-    gen_extern_functions(ostream, root.extern_functions);
-    gen_global_strings(ostream, root.global_strings);
-    gen_defined_functions(ostream, root.functions);
-}
-
-void backend::codegen::gen_extern_functions(std::ostream &ostream, const std::vector<ir::global::extern_function> &extern_functions) {
-    ostream << "section .external_functions" << '\n';
-
-    for (const auto &extern_function : extern_functions) {
-        ostream << "extern " << extern_function.name << '\n';
-    }
-}
-
-void backend::codegen::gen_global_strings(std::ostream &ostream, const std::vector<ir::global::global_string> &global_strings) {
-    ostream << "section .global_strings" << '\n';
-
-    for (const auto &global_string : global_strings) {
+    ostream << "section .global_strings\n";
+    for (const auto& global_string : root.global_strings) {
         ostream << global_string.name << ": db " << global_string.value << '\n';
     }
-}
 
-void backend::codegen::gen_defined_functions(std::ostream &ostream, const std::vector<ir::global::function> &functions) {
-    ostream << "section .text" << '\n';
+    ostream << "section .external_functions\n";
+    for (const auto& extern_function : root.extern_functions) {
+        ostream << "extern " << extern_function.name << '\n';
+    }
 
-    for (const auto &function : functions) {
-        gen_function(ostream, function);
+    ostream << "section .text\n";
+    for (const auto& function : root.functions) {
+        gen_function(root, ostream, function);
     }
 }
 
-void backend::codegen::gen_function(std::ostream &ostream, const ir::global::function &function) {
+void backend::codegen::gen_function(const ir::root &root,
+                                    std::ostream &ostream,
+                                    const ir::global::function &function) {
     ostream << "\nglobal " << function.name << "\n\n";
     ostream << function.name << ':' << '\n';
 
     backend::codegen::function_context context {
+        .root = root,
         .ostream = ostream,
         .current_function = function,
     };
@@ -69,7 +58,7 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
                 if (std::holds_alternative<ir::int_literal>(instruction.operands[i].val)) continue;
 
                 const auto &var = std::get<ir::variable>(instruction.operands[i].val);
-                const auto *ptr = context.value_map.at(var.name).get();
+                const auto *ptr = context.get_value(var.name.c_str());
 
                 if (auto *reg = dynamic_cast<const backend::codegen::register_storage*>(ptr)) {
                     context.used_register[reg->reg] = true;
@@ -78,9 +67,6 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
 
             context.current_instruction = instruction.metadata.get();
             auto info = gen_instruction(context, instruction);
-
-            if (!info.valid)
-                goto finish;
 
             for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
                 if (!instruction.metadata->dropped_data[i]) continue;
@@ -101,7 +87,6 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
         }
     }
 
-    finish:
     for (const auto &block : context.asm_blocks) {
         ostream << '.' << block.name << ":\n";
         for (const auto &inst : block.nodes) {
@@ -112,6 +97,14 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
             context.ostream << '\n';
         }
     }
+}
+
+template <typename T>
+backend::codegen::instruction_return gen(auto fn,
+                                         backend::codegen::function_context &context,
+                                         const ir::block::block_instruction &instruction,
+                                         const std::vector<std::string> &operands) {
+    return fn(context, dynamic_cast<const T&>(*instruction.inst), operands);
 }
 
 backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
@@ -140,25 +133,32 @@ backend::codegen::instruction_return backend::codegen::gen_instruction(backend::
         }
     }
 
-    if (auto *allocate = dynamic_cast<ir::block::allocate*>(instruction.inst.get())) {
-        return gen_allocate(context, *allocate, operands);
-    } else if (auto *store = dynamic_cast<ir::block::store*>(instruction.inst.get())) {
-        return gen_store(context, *store, operands);
-    } else if (auto *load = dynamic_cast<ir::block::load*>(instruction.inst.get())) {
-        return gen_load(context, *load, operands);
-    } else if (auto *icmp = dynamic_cast<ir::block::icmp*>(instruction.inst.get())) {
-        return gen_icmp(context, *icmp, operands);
-    } else if (auto *branch = dynamic_cast<ir::block::branch*>(instruction.inst.get())) {
-        return gen_branch(context, *branch, operands);
-    } else if (auto *ret = dynamic_cast<ir::block::ret*>(instruction.inst.get())) {
-        return gen_return(context, *ret, operands);
-    } else if (auto *arithmetic = dynamic_cast<ir::block::arithmetic*>(instruction.inst.get())) {
-        return gen_arithmetic(context, *arithmetic, operands);
-    } else if (auto *call = dynamic_cast<ir::block::call*>(instruction.inst.get())) {
-        return gen_call(context, *call, operands);
+    switch (instruction.inst->type) {
+        using enum ir::block::node_type;
+
+        case allocate:
+            return gen<ir::block::allocate>(gen_allocate, context, instruction, operands);
+        case store:
+            return gen<ir::block::store>(gen_store, context, instruction, operands);
+        case load:
+            return gen<ir::block::load>(gen_load, context, instruction, operands);
+        case icmp:
+            return gen<ir::block::icmp>(gen_icmp, context, instruction, operands);
+        case branch:
+            return gen<ir::block::branch>(gen_branch, context, instruction, operands);
+        case jmp:
+            return gen<ir::block::jmp>(gen_jmp, context, instruction, operands);
+        case ret:
+            return gen<ir::block::ret>(gen_return, context, instruction, operands);
+        case arithmetic:
+            return gen<ir::block::arithmetic>(gen_arithmetic, context, instruction, operands);
+        case call:
+            return gen<ir::block::call>(gen_call, context, instruction, operands);
+        case phi:
+            return gen<ir::block::phi>(gen_phi, context, instruction, operands);
+        case literal:
+            return gen<ir::block::literal>(gen_literal, context, instruction, operands);
     }
 
-    return {
-        .valid = false
-    };
+    throw std::runtime_error("Unknown instruction");
 }
