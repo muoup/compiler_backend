@@ -254,7 +254,7 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
             continue;
         }
 
-        for (int64_t i = 0; i < nodes.size(); i++) {
+        for (int64_t i = 0; i < (int64_t) nodes.size(); i++) {
             auto iter = nodes.begin() + i;
 
             if (auto *jmp = dynamic_cast<const as::inst::jmp*>(iter->get())) {
@@ -272,7 +272,7 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
 
                 cond_jmp->branch_name = temp_phi;
 
-                auto &temp_block = context.asm_blocks.emplace_back(temp_phi);
+                auto &temp_block = context.asm_blocks.emplace_back(std::move(temp_phi));
 
                 auto cached_context = context.current_label;
                 context.current_label = &temp_block;
@@ -281,7 +281,7 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
 
                 context.current_label = cached_context;
 
-                temp_block.nodes.emplace_back(std::make_unique<as::inst::jmp>(val_name));
+                temp_block.nodes.emplace_back(std::make_unique<as::inst::jmp>(phi_block));
             }
         }
     }
