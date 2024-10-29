@@ -112,6 +112,114 @@ namespace backend::as::inst {
         context.ostream << op1->get_address() << ", " << op2->get_address();
     }
 
+    static const char* cmove_inst(ir::block::icmp_type type) {
+        switch (type) {
+            using enum ir::block::icmp_type;
+
+            case eq:
+                return "cmove";
+            case neq:
+                return "cmovne";
+
+            case slt:
+                return "cmovl";
+            case sgt:
+                return "cmovg";
+            case sle:
+                return "cmovle";
+            case sge:
+                return "cmovge";
+
+            case ult:
+                return "cmovb";
+            case ugt:
+                return "cmova";
+            case ule:
+                return "cmovbe";
+            case uge:
+                return "cmovae";
+
+            default:
+                throw std::runtime_error("no such icmp type");
+        }
+    }
+
+    void arith_lea::print(backend::codegen::function_context &context) const {
+        print_inst(context.ostream, "lea", dest);
+
+        context.ostream << ", [";
+
+        if (reg1.has_value()) {
+            context.ostream
+                << backend::codegen::register_as_string((codegen::register_t) reg1.value(), 8)
+                << " + ";
+        }
+
+        if (reg2.has_value()) {
+            if (reg2_mul.has_value()) {
+                context.ostream
+                        << reg2_mul.value() << " * ";
+            }
+
+            context.ostream
+                    << backend::codegen::register_as_string((codegen::register_t) reg2.value(), 8);
+        }
+
+        if (offset.has_value()) {
+            if (reg1.has_value() || reg2.has_value()) {
+                if (reg2_mul.has_value() && *reg2_mul < 0) {
+                    context.ostream << " - ";
+                } else {
+                    context.ostream << " + ";
+                }
+            }
+
+            context.ostream << offset.value();
+        }
+
+        context.ostream << "]";
+    }
+
+    void cmov::print(backend::codegen::function_context &context) const {
+        print_inst(context.ostream, cmove_inst(type), src, dest);
+    }
+
+    static const char* set_inst(ir::block::icmp_type type) {
+        switch (type) {
+            using enum ir::block::icmp_type;
+
+            case eq:
+                return "sete";
+            case neq:
+                return "setne";
+
+            case slt:
+                return "setl";
+            case sgt:
+                return "setg";
+            case sle:
+                return "setle";
+            case sge:
+                return "setge";
+
+            case ult:
+                return "setb";
+            case ugt:
+                return "seta";
+            case ule:
+                return "setbe";
+            case uge:
+                return "setae";
+
+            default:
+                throw std::runtime_error("no such icmp type");
+        }
+    }
+
+    void set::print(backend::codegen::function_context &context) const {
+        print_inst(context.ostream, set_inst(type), op);
+    }
+
     void jmp::print(backend::codegen::function_context &context) const {
         print_inst(context.ostream, "jmp");
         context.ostream << "." << label_name;
@@ -154,13 +262,13 @@ namespace backend::as::inst {
     }
 }
 
-std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr) {
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr, size_t size) {
     if (const auto *reg = dynamic_cast<const codegen::register_storage*>(vptr)) {
-        return std::make_unique<op::reg>(reg->reg, reg->get_size());
+        return std::make_unique<op::reg>(reg->reg, size);
     } else if (const auto *stack = dynamic_cast<const codegen::stack_pointer*>(vptr)) {
         return std::make_unique<op::stack_memory>(stack->rsp_off, stack->alloc_size);
     } else if (const auto *imm = dynamic_cast<const codegen::literal*>(vptr)) {
-        return std::make_unique<op::imm>(imm->value, 8);
+        return std::make_unique<op::imm>(imm->value, size);
     } else if (const auto *global = dynamic_cast<const codegen::global_pointer*>(vptr)) {
         return std::make_unique<op::global_pointer>(global->name);
     }

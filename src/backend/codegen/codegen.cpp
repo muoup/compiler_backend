@@ -10,7 +10,7 @@ void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
 
     ostream << "section .global_strings\n";
     for (const auto& global_string : root.global_strings) {
-        ostream << global_string.name << ": db " << global_string.value << '\n';
+        ostream << global_string.name << " db \"" << global_string.value << "\", 0\n";
     }
 
     ostream << "section .external_functions\n";
@@ -76,6 +76,10 @@ void backend::codegen::gen_function(const ir::root &root,
                 context.drop_value(
                 var.name.c_str()
                 );
+
+                context.dropped_available.emplace_back(
+                    backend::codegen::param_register(i)
+                );
             }
 
             if (info.return_dest && instruction.assigned_to) {
@@ -104,7 +108,13 @@ backend::codegen::instruction_return gen(auto fn,
                                          backend::codegen::function_context &context,
                                          const ir::block::block_instruction &instruction,
                                          const std::vector<std::string> &operands) {
-    return fn(context, dynamic_cast<const T&>(*instruction.inst), operands);
+    context.dropped_reassignable = instruction.inst->dropped_reassignable();
+
+    auto ret = fn(context, dynamic_cast<const T&>(*instruction.inst), operands);
+
+    context.dropped_reassignable = true;
+
+    return ret;
 }
 
 backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
@@ -136,6 +146,8 @@ backend::codegen::instruction_return backend::codegen::gen_instruction(backend::
     switch (instruction.inst->type) {
         using enum ir::block::node_type;
 
+        case literal:
+            return gen<ir::block::literal>(gen_literal, context, instruction, operands);
         case allocate:
             return gen<ir::block::allocate>(gen_allocate, context, instruction, operands);
         case store:
@@ -156,8 +168,8 @@ backend::codegen::instruction_return backend::codegen::gen_instruction(backend::
             return gen<ir::block::call>(gen_call, context, instruction, operands);
         case phi:
             return gen<ir::block::phi>(gen_phi, context, instruction, operands);
-        case literal:
-            return gen<ir::block::literal>(gen_literal, context, instruction, operands);
+        case select:
+            return gen<ir::block::select>(gen_select, context, instruction, operands);
     }
 
     throw std::runtime_error("Unknown instruction");

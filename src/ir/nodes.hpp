@@ -78,7 +78,7 @@ namespace ir {
         }
 
         enum class node_type {
-            literal, allocate, store, load, branch, jmp, icmp, call, ret, arithmetic, phi
+            literal, allocate, store, load, branch, jmp, icmp, call, ret, arithmetic, phi, select
         };
 
         /**
@@ -98,6 +98,7 @@ namespace ir {
 
             virtual void print(std::ostream&) const = 0;
             virtual ~instruction() = default;
+            virtual bool dropped_reassignable() const { return true; }
         };
 
         /**
@@ -286,6 +287,8 @@ namespace ir {
             explicit call(std::string name)
                 :   instruction(node_type::call), name(std::move(name)) {}
 
+            bool dropped_reassignable() const override { return false; }
+
             PRINT_DEF("call", name);
             ~call() override = default;
         };
@@ -312,6 +315,8 @@ namespace ir {
                 case div: return "div";
                 case mod: return "mod";
             }
+
+            throw std::runtime_error("no such arithmetic type");
         }
 
         struct arithmetic : instruction {
@@ -346,6 +351,15 @@ namespace ir {
             };
 
             ~phi() override = default;
+        };
+
+        struct select : instruction {
+            select() : instruction(node_type::select) {};
+            ~select() override = default;
+
+            bool dropped_reassignable() const override { return false; }
+
+            PRINT_DEF("select");
         };
     }
 

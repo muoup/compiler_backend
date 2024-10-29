@@ -8,9 +8,12 @@
 
 namespace backend::codegen {
     struct function_context;
+    struct register_storage;
 
     struct vptr {
         virtual ~vptr() = default;
+
+        [[nodiscard]] virtual bool addressable () const { return true; }
         [[nodiscard]] virtual std::string get_address(size_t size) const = 0;
         [[nodiscard]] virtual size_t get_size() const { return 8; }
     };
@@ -18,8 +21,8 @@ namespace backend::codegen {
 
     virtual_pointer stack_allocate(backend::codegen::function_context &context, size_t size);
 
-    backend::codegen::virtual_pointer find_register(backend::codegen::function_context &context);
-    backend::codegen::virtual_pointer force_find_register(backend::codegen::function_context &context);
+    std::unique_ptr<backend::codegen::register_storage> find_register(backend::codegen::function_context &context);
+    std::unique_ptr<backend::codegen::register_storage> force_find_register(backend::codegen::function_context &context);
 
     std::string get_stack_prefix(size_t size);
 
@@ -41,7 +44,7 @@ namespace backend::codegen {
     struct register_storage : vptr {
         backend::codegen::register_t reg;
 
-        explicit register_storage(backend::codegen::register_t reg) : reg(reg) {}
+        explicit register_storage(backend::codegen::register_t reg, size_t size = 8) : reg(reg) {}
         ~register_storage() override = default;
 
         [[nodiscard]] std::string get_address(size_t size) const override {
@@ -58,6 +61,9 @@ namespace backend::codegen {
         explicit literal(uint64_t value) : value(value) {}
         ~literal() override = default;
 
+        [[nodiscard]] bool addressable() const override {
+            return false;
+        }
         [[nodiscard]] std::string get_address(size_t size) const override {
             return std::to_string(value);
         }
