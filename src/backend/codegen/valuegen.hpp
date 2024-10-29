@@ -11,6 +11,8 @@ namespace backend::codegen {
     struct register_storage;
 
     struct vptr {
+        bool droppable = true;
+
         virtual ~vptr() = default;
 
         [[nodiscard]] virtual bool addressable () const { return true; }

@@ -76,10 +76,6 @@ void backend::codegen::gen_function(const ir::root &root,
                 context.drop_value(
                 var.name.c_str()
                 );
-
-                context.dropped_available.emplace_back(
-                    backend::codegen::param_register(i)
-                );
             }
 
             if (info.return_dest && instruction.assigned_to) {
