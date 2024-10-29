@@ -30,8 +30,11 @@ backend::codegen::instruction_return backend::codegen::gen_allocate(
 ) {
     debug::assert(virtual_operands.empty(), "Allocation size must be a multiple of 8");
 
+    auto vptr = backend::codegen::stack_allocate(context, allocate.size);
+    vptr->droppable = false;
+
     return backend::codegen::instruction_return {
-        backend::codegen::stack_allocate(context, allocate.size)
+        .return_dest = std::move(vptr)
     };
 }
 
@@ -43,6 +46,7 @@ backend::codegen::instruction_return backend::codegen::gen_store(
     debug::assert(virtual_operands.size() == 2, "Store instruction must have 2 operands");
 
     backend::codegen::emit_move(context, virtual_operands[1], virtual_operands[0], store.size);
+
     return backend::codegen::instruction_return {};
 }
 

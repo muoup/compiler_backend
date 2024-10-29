@@ -84,6 +84,13 @@ namespace backend::codegen {
         }
 
         void drop_value(const char* name) {
+            auto &value = value_map.at(name);
+
+            if (!value->droppable) return;
+            if (dynamic_cast<const register_storage*>(value.get())) {
+                dropped_available.emplace_back(dynamic_cast<const register_storage*>(value.get())->reg);
+            }
+
             set_used(value_map.at(name).get(), false);
             dropped_at_map.emplace(name, std::move(value_map.at(name)));
             value_map.erase(name);
