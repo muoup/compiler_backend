@@ -5,6 +5,7 @@
 #include <iomanip>
 
 #include "../instructions.hpp"
+#include "../../../debug/assert.hpp"
 
 namespace backend::as {
     enum operand_types : uint8_t {
@@ -56,6 +57,51 @@ namespace backend::as {
             }
 
             ~mov() override = default;
+
+            void print(backend::codegen::function_context &context) const override;
+        };
+
+        struct arith_lea : asm_node {
+            operand dest;
+
+            std::optional<int64_t> offset;
+            std::optional<register_t> reg1;
+
+            std::optional<int64_t> reg2_mul;
+            std::optional<register_t> reg2;
+
+            arith_lea(operand dest, std::optional<int64_t> offset, std::optional<register_t> reg1,
+                      std::optional<int64_t> reg2_mul, std::optional<register_t> reg2)
+                    : dest(std::move(dest)), offset(offset), reg1(reg1), reg2_mul(reg2_mul), reg2(reg2) {}
+
+            ~arith_lea() override = default;
+
+            void print(backend::codegen::function_context &context) const override;
+        };
+
+        struct cmov : asm_node {
+            ir::block::icmp_type type;
+            operand src, dest;
+
+            cmov(ir::block::icmp_type type, operand op1, operand op2)
+                    : type(type), src(std::move(op1)), dest(std::move(op2)) {}
+
+            ~cmov() override = default;
+
+            void print(backend::codegen::function_context &context) const override;
+        };
+
+        struct set : asm_node {
+            ir::block::icmp_type type;
+            operand op;
+
+            set(ir::block::icmp_type type, operand op)
+                    : type(type), op(std::move(op)) {
+                debug::assert(this->op->type == operand_types::reg, "set operand must be a register");
+                debug::assert(this->op->size == 1, "set operand must be 1 byte");
+            }
+
+            ~set() override = default;
 
             void print(backend::codegen::function_context &context) const override;
         };
@@ -130,5 +176,5 @@ namespace backend::as {
         std::vector<std::unique_ptr<inst::asm_node>> nodes;
     };
 
-    std::unique_ptr<op::operand_t> create_operand(const codegen::vptr *vptr);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(const codegen::vptr *vptr, size_t size);
 }

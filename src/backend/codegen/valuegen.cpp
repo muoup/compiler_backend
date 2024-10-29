@@ -6,7 +6,7 @@
 
 #include <sstream>
 
-backend::codegen::virtual_pointer backend::codegen::force_find_register(backend::codegen::function_context &context) {
+std::unique_ptr<backend::codegen::register_storage> backend::codegen::force_find_register(backend::codegen::function_context &context) {
     if (auto find = backend::codegen::find_register(context))
         return find;
 
@@ -20,7 +20,7 @@ backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::code
     return std::make_unique<stack_pointer>(context.current_stack_size, size);
 }
 
-backend::codegen::virtual_pointer backend::codegen::find_register(backend::codegen::function_context &context) {
+std::unique_ptr<backend::codegen::register_storage> backend::codegen::find_register(backend::codegen::function_context &context) {
     // First check if any registers are being dropped
     const auto& dropped_data = context.current_instruction->dropped_data;
 
@@ -43,14 +43,13 @@ backend::codegen::virtual_pointer backend::codegen::find_register(backend::codeg
         }
     }
 
-    // Then check for dropped parameter registers
-    const auto param_count = context.current_function.parameters.size();
-
-    for (size_t i = 0; i < param_count; i++) {
-        const auto reg = backend::codegen::param_register(i);
+    // Check for dropped registers that are available
+    for (auto iter = context.dropped_available.begin(); iter != context.dropped_available.end(); iter++) {
+        auto reg = *iter;
 
         if (context.used_register[reg]) continue;
 
+        context.dropped_available.erase(iter);
         context.used_register[reg] = true;
         return std::make_unique<backend::codegen::register_storage>(reg);
     }

@@ -69,7 +69,7 @@ void ir::output::emit_parameters(std::ostream &ostream, const std::vector<ir::gl
         emit_parameter(ostream, params[i]);
 
         if (i + 1 < params.size())
-            ostream << ",";
+            ostream << ", ";
     }
 
     ostream << ")";

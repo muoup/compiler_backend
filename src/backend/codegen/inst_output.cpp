@@ -24,8 +24,8 @@ void backend::codegen::emit_move(function_context &context,
 
     if (!dest_stack || !src_stack) {
         context.add_asm_node<as::inst::mov>(
-            as::create_operand(dest),
-            as::create_operand(src)
+                as::create_operand(dest, 8),
+            as::create_operand(src, 8)
         );
         return;
     }
@@ -33,12 +33,12 @@ void backend::codegen::emit_move(function_context &context,
     auto reg = backend::codegen::force_find_register(context);
 
     context.add_asm_node<as::inst::mov>(
-        as::create_operand(reg.get()),
-        as::create_operand(src)
+            as::create_operand(reg.get(), 8),
+        as::create_operand(src, 8)
     );
 
     context.add_asm_node<as::inst::mov>(
-        as::create_operand(dest),
-        as::create_operand(reg.get())
+            as::create_operand(dest, 8),
+        as::create_operand(reg.get(), 8)
     );
 }

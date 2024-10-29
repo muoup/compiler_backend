@@ -104,8 +104,8 @@ backend::codegen::instruction_return backend::codegen::gen_icmp(
     const auto *rhs = context.get_value(virtual_operands[1]);
 
     context.add_asm_node<as::inst::cmp>(
-        as::create_operand(lhs),
-        as::create_operand(rhs)
+            as::create_operand(lhs, 8),
+        as::create_operand(rhs, 8)
     );
 
     return {
@@ -195,8 +195,8 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic(
 
     context.add_asm_node<as::inst::arithmetic>(
             arithmetic.type,
-            as::create_operand(reg.get()),
-            as::create_operand(rhs)
+            as::create_operand(reg.get(), 8),
+            as::create_operand(rhs, 8)
     );
 
     return {
@@ -207,12 +207,8 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic(
 backend::codegen::instruction_return backend::codegen::gen_call(
         backend::codegen::function_context &context,
         const ir::block::call &call,
-        const v_operands &virtual_operands) {
-
-    bool dropped_reassignable = context.dropped_reassignable;
-    context.dropped_reassignable = false;
-
-
+        const v_operands &virtual_operands
+) {
     backend::codegen::empty_register(context, backend::codegen::register_t::rax);
 
     for (size_t i = 0; i < virtual_operands.size(); i++) {
@@ -222,7 +218,6 @@ backend::codegen::instruction_return backend::codegen::gen_call(
     }
 
     context.add_asm_node<as::inst::call>(call.name);
-    context.dropped_reassignable = dropped_reassignable;
 
     return {
         .return_dest = std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax)
@@ -248,8 +243,8 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
 
         if (nodes.empty()) {
             nodes.emplace_back(std::make_unique<as::inst::mov>(
-                as::create_operand(mem.get()),
-                as::create_operand(val)
+                    as::create_operand(mem.get(), 8),
+                as::create_operand(val, 8)
             ));
             continue;
         }
@@ -261,8 +256,8 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
                 if (jmp->label_name != phi_block) continue;
 
                 nodes.insert(iter, std::make_unique<as::inst::mov>(
-                    as::create_operand(mem.get()),
-                    as::create_operand(val)
+                        as::create_operand(mem.get(), 8),
+                    as::create_operand(val, 8)
                 ));
                 i++;
             } else if (auto *cond_jmp = dynamic_cast<as::inst::cond_jmp*>(iter->get())) {
@@ -285,6 +280,125 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
             }
         }
     }
+
+    return {
+        .return_dest = std::move(mem)
+    };
+}
+
+ir::block::icmp_type invert(ir::block::icmp_type type) {
+    switch (type) {
+        using enum ir::block::icmp_type;
+
+        case eq:
+            return neq;
+        case neq:
+            return eq;
+
+        case slt:
+            return sge;
+        case sgt:
+            return sle;
+        case sle:
+            return sgt;
+        case sge:
+            return slt;
+
+        case ult:
+            return uge;
+        case ugt:
+            return ule;
+        case ule:
+            return ugt;
+        case uge:
+            return ult;
+
+        default:
+            throw std::runtime_error("no such icmp type");
+    }
+}
+
+
+backend::codegen::instruction_return backend::codegen::gen_select(
+        backend::codegen::function_context &context,
+        const ir::block::select &select,
+        const backend::codegen::v_operands &virtual_operands
+) {
+    debug::assert(virtual_operands.size() == 3, "Invalid Parameter Count for Select");
+
+    const auto *cond = context.get_value(virtual_operands[0]);
+    auto *lhs = context.get_value(virtual_operands[1]);
+    auto *rhs = context.get_value(virtual_operands[2]);
+
+    const auto *icmp = dynamic_cast<const backend::codegen::icmp_result*>(cond);
+
+    debug::assert(icmp, "First parameter of Select is not a ICMP Result!");
+
+    if (!lhs->addressable() && !rhs->addressable()) {
+        return gen_arithmetic_select(context, select, virtual_operands);
+    }
+
+    auto icmp_type = icmp->flag;
+
+    if (!lhs->addressable()) {
+        std::swap(lhs, rhs);
+        icmp_type = invert(icmp->flag);
+    }
+
+    auto mem = backend::codegen::find_memory(context, 8);
+
+    context.add_asm_node<as::inst::mov>(
+        as::create_operand(rhs, 8),
+        as::create_operand(mem.get(), 8)
+    );
+
+    context.add_asm_node<as::inst::cmov>(
+        icmp_type,
+        as::create_operand(lhs, 8),
+        as::create_operand(mem.get(), 8)
+    );
+
+    return {
+        .return_dest = std::move(mem)
+    };
+}
+
+backend::codegen::instruction_return backend::codegen::gen_arithmetic_select(
+        backend::codegen::function_context &context,
+        const ir::block::select &,
+        const backend::codegen::v_operands &virtual_operands
+) {
+    debug::assert(virtual_operands.size() == 3, "Invalid Parameter Count for Select");
+
+    const auto *cond = context.get_value(virtual_operands[0]);
+    auto *lhs = context.get_value(virtual_operands[1]);
+    auto *rhs = context.get_value(virtual_operands[2]);
+
+    const auto *icmp = dynamic_cast<const backend::codegen::icmp_result*>(cond);
+    const auto *lhs_imm = dynamic_cast<const backend::codegen::literal*>(lhs);
+    const auto *rhs_imm = dynamic_cast<const backend::codegen::literal*>(rhs);
+
+    debug::assert(icmp, "First parameter of Select is not a ICMP Result!");
+    debug::assert(lhs_imm, "Second parameter of Arithmetic Select is not a Literal!");
+    debug::assert(rhs_imm, "Third parameter of Arithmetic Select is not a Literal!");
+
+    auto global_off = (int64_t) lhs_imm->value;
+    auto global_multi = (int64_t) rhs_imm->value - global_off;
+
+    auto mem = codegen::force_find_register(context);
+
+    context.add_asm_node<as::inst::set>(
+        icmp->flag,
+        as::create_operand(mem.get(), 1)
+    );
+
+    context.add_asm_node<as::inst::arith_lea>(
+        as::create_operand(mem.get(), 8),
+        global_off,
+        std::nullopt,
+        std::abs(global_multi),
+        mem->reg
+    );
 
     return {
         .return_dest = std::move(mem)
