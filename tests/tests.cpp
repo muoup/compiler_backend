@@ -1,5 +1,4 @@
 #include <iostream>
-#include <memory>
 #include <fstream>
 #include <sstream>
 #include <chrono>
@@ -13,7 +12,6 @@
 #include "../src/backend/debug/emitter_attachments.hpp"
 #include "../src/backend/codegen/codegen.hpp"
 #include "../src/exec/executor.hpp"
-#include "../src/debug/assert.hpp"
 
 void io_stack_test() {
     std::ifstream file { "../examples/read_write_exact.ir" };
