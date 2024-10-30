@@ -6,7 +6,7 @@
 
 using namespace ir;
 
-using lex_iter_t = std::string::const_iterator;
+using lex_iter_t = std::string_view::const_iterator;
 
 struct preident_token {
     lexer::token token;
@@ -52,7 +52,7 @@ const static preident_function preident_functions[] = {
     get_string
 };
 
-std::vector<lexer::token> lexer::lex(const std::string &input) {
+std::vector<lexer::token> lexer::lex(std::string_view input) {
     auto iter = input.begin();
     auto unconsumed_begin = input.begin();
     const auto end = input.end();

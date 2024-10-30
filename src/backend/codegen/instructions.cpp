@@ -4,7 +4,7 @@
 
 #include "codegen.hpp"
 #include "valuegen.hpp"
-#include "inst_output.hpp"
+#include "asmgen/asm_interface.hpp"
 
 #include "../../debug/assert.hpp"
 #include "dataflow.hpp"
@@ -45,7 +45,7 @@ backend::codegen::instruction_return backend::codegen::gen_store(
 ) {
     debug::assert(virtual_operands.size() == 2, "Store instruction must have 2 operands");
 
-    backend::codegen::emit_move(context, virtual_operands[1], virtual_operands[0], store.size);
+    backend::as::emit_move(context, virtual_operands[1], virtual_operands[0], store.size);
 
     return backend::codegen::instruction_return {};
 }
@@ -58,7 +58,7 @@ backend::codegen::instruction_return backend::codegen::gen_load(
     debug::assert(virtual_operands.size() == 1, "Load instruction must have 2 operands");
 
     auto dest = backend::codegen::find_memory(context, load.size);
-    backend::codegen::emit_move(context, dest.get(), virtual_operands[0], load.size);
+    backend::as::emit_move(context, dest.get(), virtual_operands[0], load.size);
 
     return {
         .return_dest = std::move(dest)
@@ -161,7 +161,7 @@ backend::codegen::instruction_return backend::codegen::gen_return(
     debug::assert(virtual_operands.size() <= 1, "Invalid Parameter Count for Return");
 
     if (!virtual_operands.empty())
-        codegen::emit_move(context, rax.get(), virtual_operands[0], 8);
+        as::emit_move(context, rax.get(), virtual_operands[0], 8);
 
     context.add_asm_node<as::inst::ret>();
     return {};
@@ -195,7 +195,7 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic(
     const auto rhs = context.get_value(virtual_operands[1]);
 
     auto reg = backend::codegen::find_register(context);
-    backend::codegen::emit_move(context, reg.get(), virtual_operands[0], 8);
+    backend::as::emit_move(context, reg.get(), virtual_operands[0], 8);
 
     context.add_asm_node<as::inst::arithmetic>(
             arithmetic.type,
@@ -233,12 +233,12 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
         const ir::block::phi &phi,
         const backend::codegen::v_operands &virtual_operands
 ) {
-    debug::assert(virtual_operands.size() == phi.branches.size(), "Invalid Parameter Count for Phi");
+    debug::assert(virtual_operands.size() == phi.labels.size(), "Invalid Parameter Count for Phi");
     auto mem = backend::codegen::find_memory(context, 8);
     const auto &phi_block = context.current_label->name;
 
     for (size_t op = 0; op < virtual_operands.size(); op++) {
-        const auto &target = phi.branches[op];
+        const auto &target = phi.labels[op];
         const auto &val_name = virtual_operands[op];
         const auto &val = context.get_value(val_name);
 
@@ -276,7 +276,7 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
                 auto cached_context = context.current_label;
                 context.current_label = &temp_block;
 
-                codegen::emit_move(context, mem.get(), val_name, 8);
+                as::emit_move(context, mem.get(), val_name, 8);
 
                 context.current_label = cached_context;
 

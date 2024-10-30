@@ -1,6 +1,6 @@
 #include "dataflow.hpp"
 #include "codegen.hpp"
-#include "inst_output.hpp"
+#include "asmgen/asm_interface.hpp"
 
 void backend::codegen::empty_value(backend::codegen::function_context &context, const char *value) {
     auto &vmem = context.value_map.at(value);
@@ -13,7 +13,7 @@ void backend::codegen::empty_value(backend::codegen::function_context &context, 
 
 //    context.unmap_to_temp(value);
     context.map_value(value, std::move(new_memory));
-    backend::codegen::emit_move(context, "temp", value, mem_size);
+    backend::as::emit_move(context, "temp", value, mem_size);
 }
 
 void backend::codegen::move_to_register(backend::codegen::function_context &context,
@@ -34,7 +34,7 @@ void backend::codegen::move_to_register(backend::codegen::function_context &cont
 
     auto new_memory = std::make_unique<backend::codegen::register_storage>(reg);
 
-    backend::codegen::emit_move(context, new_memory.get(), value, 8);
+    backend::as::emit_move(context, new_memory.get(), value, 8);
 
     if (!dynamic_cast<backend::codegen::literal*>(context.get_value(value)))
        context.remap_value(value.data(), std::move(new_memory));
@@ -47,7 +47,7 @@ const backend::codegen::vptr* backend::codegen::empty_register(backend::codegen:
         if (!reg_storage || reg_storage->reg != reg) continue;
 
         auto new_memory = backend::codegen::find_memory(context, vmem->get_size());
-        backend::codegen::emit_move(context, new_memory.get(), name, 8);
+        backend::as::emit_move(context, new_memory.get(), name, 8);
 
         context.remap_value(name.c_str(), std::move(new_memory));
         return context.value_map.at(name).get();

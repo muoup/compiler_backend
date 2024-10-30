@@ -2,6 +2,6 @@
 
 #include "../../ir/node_prototypes.hpp"
 
-namespace backend {
-    void analyze_ir(struct ir::root &root);
+namespace backend::md {
+    void analyze(ir::root &root);
 }

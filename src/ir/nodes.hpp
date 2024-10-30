@@ -111,7 +111,7 @@ namespace ir {
             std::vector<value> operands;
             std::optional<variable> assigned_to;
 
-            std::unique_ptr<backend::instruction_metadata> metadata { nullptr};
+            std::unique_ptr<backend::md::instruction_metadata> metadata { nullptr};
 
             explicit block_instruction(std::unique_ptr<instruction> instruction,
                                        std::vector<value> operands)
@@ -321,6 +321,10 @@ namespace ir {
             throw std::runtime_error("no such arithmetic type");
         }
 
+        /**
+         *  Represents a arithmetic command, which for now is limited
+         *  to addition, subtraction, and multiplication.
+         */
         struct arithmetic : instruction {
             arithmetic_type type;
 
@@ -333,21 +337,26 @@ namespace ir {
 
         /**
          *  Represents a value which differs depending on the branch taken.
+         *  For each pair of label and operand, ensures that there is one storage
+         *  location where when said label labels to the phi label, the according
+         *  value will be stored there for reference in the phi label.
+         *
+         *  Requires that the amount of provided operands equals the amount of labels.
          */
         struct phi : instruction {
-            std::vector<std::string> branches;
+            std::vector<std::string> labels;
 
-            explicit phi(std::vector<std::string> branches)
-                :   instruction(node_type::phi),
-                    branches(std::move(branches)) {}
+            explicit phi(std::vector<std::string> labels)
+                : instruction(node_type::phi),
+                  labels(std::move(labels)) {}
             explicit phi(std::string branch1, std::string branch2)
-                :   instruction(node_type::phi),
-                    branches { std::move(branch1), std::move(branch2) } {}
+                : instruction(node_type::phi),
+                  labels {std::move(branch1), std::move(branch2) } {}
 
             void print(std::ostream &ostream) const override {
                 __inst_print(ostream, "phi");
 
-                for (const auto &branch : branches) {
+                for (const auto &branch : labels) {
                     ostream << " " << branch;
                 }
             };
@@ -355,11 +364,16 @@ namespace ir {
             ~phi() override = default;
         };
 
+        /**
+         *  Equivalent essentially to a ternary operator, the first operand accepted
+         *  is the condition, if true the second operand is stored in the value, else
+         *  the third operand is.
+         */
         struct select : instruction {
             select() : instruction(node_type::select) {};
             ~select() override = default;
 
-            bool dropped_reassignable() const override { return false; }
+            [[nodiscard]] bool dropped_reassignable() const override { return false; }
 
             PRINT_DEF("select");
         };
@@ -400,7 +414,7 @@ namespace ir {
             std::vector<parameter> parameters;
             std::vector<block::block> blocks;
 
-            std::unique_ptr<backend::function_metadata> metadata { nullptr };
+            std::unique_ptr<backend::md::function_metadata> metadata = nullptr;
 
             explicit function(std::string name,
                               std::vector<parameter> parameters,

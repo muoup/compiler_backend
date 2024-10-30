@@ -4,7 +4,7 @@
 #include <string>
 #include <unordered_map>
 
-void backend::analyze_variable_lifetimes(ir::global::function &function) {
+void backend::md::analyze_variable_lifetimes(ir::global::function &function) {
     using value_variant = std::variant<ir::int_literal, ir::variable>;
 
     std::unordered_map<std::string, const ir::block::block_instruction*> lifetime_map {};
