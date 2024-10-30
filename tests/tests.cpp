@@ -69,7 +69,7 @@ void hello_world_lex() {
 
     ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
     backend::codegen::generate(parsed,  ofile);
-
+  
     file.close();
     ofile.close();
 

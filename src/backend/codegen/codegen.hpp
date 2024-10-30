@@ -25,6 +25,8 @@ namespace backend::codegen {
     struct instruction_return;
     struct vptr;
 
+    using vptr_gen = const vptr*(*)();
+
     struct function_context {
         std::ostream& ostream;
 
@@ -59,6 +61,24 @@ namespace backend::codegen {
             set_used(value.get(), true);
             value_map[name] = std::move(value);
             set_used(value.get(), false);
+        }
+
+        bool has_value(std::string_view name) const {
+            return value_map.contains(std::string { name });
+        }
+
+        vptr* get_value(std::string_view name) const {
+            return value_map.at(std::string { name }).get();
+        }
+
+        void unmap_to_temp(const char* name) {
+            auto temp = std::move(value_map.at(name));
+            value_map.erase(name);
+            value_map["__int__temp"] = std::move(temp);
+        }
+
+        void override_temp(virtual_pointer ptr) {
+           value_map["__int__temp"] = std::move(ptr);
         }
     };
 

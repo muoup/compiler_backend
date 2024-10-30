@@ -141,24 +141,28 @@ void backend::codegen::gen_function(std::ostream &ostream, const ir::global::fun
 }
 
 backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
-    std::vector<literal> literals;
-    std::vector<const vptr*> operands;
+    std::vector<std::string> operands;
 
     for (const auto& operand : instruction.operands) {
         if (std::holds_alternative<ir::int_literal>(operand.val)) {
             const auto &literal = std::get<ir::int_literal>(operand.val);
 
-            literals.emplace_back(
-            std::to_string(literal.value)
+            context.value_map.emplace(
+                std::to_string(literal.value),
+                std::make_unique<backend::codegen::literal>(std::to_string(literal.value))
             );
 
-            operands.push_back(&literals.back());
+            operands.emplace_back(
+                std::to_string(literal.value)
+            );
         } else if (std::holds_alternative<ir::variable>(operand.val)) {
             const auto &variable = std::get<ir::variable>(operand.val);
 
             debug::assert(context.value_map.contains(variable.name), "Variable not found in value map");
 
-            operands.push_back(context.value_map.at(variable.name).get());
+            operands.emplace_back(
+                variable.name
+            );
         }
     }
 

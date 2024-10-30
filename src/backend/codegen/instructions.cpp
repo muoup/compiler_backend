@@ -12,7 +12,7 @@
 backend::codegen::instruction_return backend::codegen::gen_allocate(
     backend::codegen::function_context &context,
     const ir::block::allocate &allocate,
-    std::vector<const backend::codegen::vptr*> &virtual_operands
+    const v_operands &virtual_operands
 ) {
     debug::assert(virtual_operands.empty(), "Allocation size must be a multiple of 8");
 
@@ -24,7 +24,7 @@ backend::codegen::instruction_return backend::codegen::gen_allocate(
 backend::codegen::instruction_return backend::codegen::gen_store(
     backend::codegen::function_context &context,
     const ir::block::store &store,
-    std::vector<const vptr*> &virtual_operands
+    const v_operands &virtual_operands
 ) {
     debug::assert(virtual_operands.size() == 2, "Store instruction must have 2 operands");
 
@@ -35,14 +35,12 @@ backend::codegen::instruction_return backend::codegen::gen_store(
 backend::codegen::instruction_return backend::codegen::gen_load(
         backend::codegen::function_context &context,
         const ir::block::load &load,
-        std::vector<const vptr*> &virtual_operands
+        const v_operands &virtual_operands
 ) {
     debug::assert(virtual_operands.size() == 1, "Load instruction must have 2 operands");
 
-    const auto *src = virtual_operands[0];
     auto dest = backend::codegen::find_memory(context, load.size);
-
-    backend::codegen::emit_move(context, dest.get(), src, load.size);
+    backend::codegen::emit_move(context, dest.get(), virtual_operands[0], load.size);
 
     return {
         .return_dest = std::move(dest)
@@ -84,12 +82,12 @@ const char* jmp_inst(ir::block::icmp_type type) {
 backend::codegen::instruction_return backend::codegen::gen_icmp(
         backend::codegen::function_context &context,
         const ir::block::icmp &icmp,
-        std::vector<const vptr*> &virtual_operands
+        const v_operands &virtual_operands
 ) {
     debug::assert(virtual_operands.size() == 2, "ICMP instruction must have 2 operands");
 
-    const auto *lhs = virtual_operands[0];
-    const auto *rhs = virtual_operands[1];
+    const auto *lhs = context.get_value(virtual_operands[0]);
+    const auto *rhs = context.get_value(virtual_operands[1]);
     const auto *icmp_flag = jmp_inst(icmp.type);
 
     context.ostream << "    cmp     " << lhs->get_address(8) << ", " << rhs->get_address(8) << '\n';
@@ -102,11 +100,12 @@ backend::codegen::instruction_return backend::codegen::gen_icmp(
 backend::codegen::instruction_return backend::codegen::gen_branch(
         backend::codegen::function_context &context,
         const ir::block::branch &branch,
-        std::vector<const vptr*> &virtual_operands
+        const v_operands &virtual_operands
 ) {
     debug::assert(virtual_operands.size() == 1, "Invalid Parameter Count for Branch");
 
-    const auto *icmp_result = dynamic_cast<const backend::codegen::icmp_result*>(virtual_operands[0]);
+    const auto *cond = context.get_value(virtual_operands[0]);
+    const auto *icmp_result = dynamic_cast<const backend::codegen::icmp_result*>(cond);
     debug::assert(icmp_result, "Parameter of Branch is not a ICMP Result!");
 
     context.ostream << "    " << icmp_result->flag << "     ." << branch.true_branch << '\n';
@@ -118,7 +117,7 @@ backend::codegen::instruction_return backend::codegen::gen_branch(
 backend::codegen::instruction_return backend::codegen::gen_return(
         backend::codegen::function_context &context,
         const ir::block::ret &,
-        std::vector<const vptr *> &virtual_operands) {
+        const v_operands &virtual_operands) {
     const static auto rax = std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax);
 
     debug::assert(virtual_operands.size() <= 1, "Invalid Parameter Count for Return");
@@ -154,16 +153,15 @@ const char* arithmetic_command(ir::block::arithmetic_type type) {
 backend::codegen::instruction_return backend::codegen::gen_arithmetic(
         backend::codegen::function_context &context,
         const ir::block::arithmetic &arithmetic,
-        std::vector<const vptr *> &virtual_operands) {
+        const v_operands &virtual_operands) {
     debug::assert(virtual_operands.size() == 2, ">2 operands for arithmetic instruction not yet supported");
 
-    const auto *lhs = virtual_operands[0];
-    const auto *rhs = virtual_operands[1];
+    const auto rhs = context.get_value(virtual_operands[1]);
 
     auto reg = backend::codegen::find_register(context);
     auto op = arithmetic_command(arithmetic.type);
 
-    backend::codegen::emit_move(context, reg.get(), lhs, 8);
+    backend::codegen::emit_move(context, reg.get(), virtual_operands[0], 8);
     context.ostream << "    " << op << "     " << reg->get_address(8) << ", " << rhs->get_address(8) << '\n';
 
     return {
@@ -174,7 +172,7 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic(
 backend::codegen::instruction_return backend::codegen::gen_call(
         backend::codegen::function_context &context,
         const ir::block::call &call,
-        std::vector<const vptr *> &virtual_operands) {
+        const v_operands &virtual_operands) {
 
     bool dropped_reassignable = context.dropped_reassignable;
     context.dropped_reassignable = false;
@@ -184,10 +182,9 @@ backend::codegen::instruction_return backend::codegen::gen_call(
     backend::codegen::empty_register(context, backend::codegen::register_t::rax);
 
     for (size_t i = 0; i < virtual_operands.size(); i++) {
-        auto *operand = virtual_operands[i];
         const auto param_reg_id = backend::codegen::param_register((uint8_t) i);
 
-        backend::codegen::move_to_register(context, operand, param_reg_id);
+        move_to_register(context, virtual_operands[i], param_reg_id);
     }
 
     context.ostream << "    call    " << call.name << '\n';

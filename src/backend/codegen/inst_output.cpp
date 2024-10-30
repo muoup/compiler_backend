@@ -1,8 +1,21 @@
 #include "inst_output.hpp"
 #include "codegen.hpp"
 
-void backend::codegen::emit_move(function_context &context, const backend::codegen::vptr *dest,
-                                 const backend::codegen::vptr *src, size_t size) {
+void backend::codegen::emit_move(function_context &context,
+                                 const std::string_view dest_name,
+                                 const std::string_view src_name,
+                                 const size_t size) {
+    const auto *dest = context.get_value(dest_name);
+
+    emit_move(context, dest, src_name, size);
+}
+
+void backend::codegen::emit_move(function_context &context,
+                                 const vptr *dest,
+                                 const std::string_view src_name,
+                                 size_t size) {
+    const auto *src = context.get_value(src_name);
+
     const auto *dest_stack = dynamic_cast<const backend::codegen::stack_pointer*>(dest);
     const auto *src_stack = dynamic_cast<const backend::codegen::stack_pointer*>(src);
 
