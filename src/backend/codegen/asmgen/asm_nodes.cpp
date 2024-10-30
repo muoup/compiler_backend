@@ -108,8 +108,7 @@ namespace backend::as::inst {
     }
 
     void mov::print(backend::codegen::function_context &context) const {
-        print_inst(context.ostream, "mov");
-        context.ostream << op1->get_address() << ", " << op2->get_address();
+        print_inst(context.ostream, "mov", src, dest);
     }
 
     static const char* cmove_inst(ir::block::icmp_type type) {

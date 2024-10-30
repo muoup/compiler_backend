@@ -352,14 +352,14 @@ backend::codegen::instruction_return backend::codegen::gen_select(
     auto mem = backend::codegen::find_memory(context, 8);
 
     context.add_asm_node<as::inst::mov>(
-        as::create_operand(rhs, 8),
-        as::create_operand(mem.get(), 8)
+        as::create_operand(mem.get(), 8),
+        as::create_operand(rhs, 8)
     );
 
     context.add_asm_node<as::inst::cmov>(
         icmp_type,
-        as::create_operand(lhs, 8),
-        as::create_operand(mem.get(), 8)
+        as::create_operand(mem.get(), 8),
+        as::create_operand(lhs, 8)
     );
 
     return {

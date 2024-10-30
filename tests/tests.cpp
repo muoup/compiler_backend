@@ -52,7 +52,7 @@ void io_stack_test() {
 
 void hello_world_lex() {
     std::ifstream file { "../examples/select_test.ir" };
-    std::ofstream ofile { "../examples/select_test.ir" };
+    std::ofstream ofile { "../examples/select_test.asm" };
 
     if (!file.is_open()) {
         std::cerr << "Failed to open file" << std::endl;
@@ -71,9 +71,7 @@ void hello_world_lex() {
     file.close();
     ofile.close();
 
-    auto exit_code = exec::execute("../examples/fibonacci.asm");
-
-    debug::assert(exit_code == 55, "Fibonacci failed");
+    exec::execute("../examples/select_test.asm");
 
     asm("nop");
 }

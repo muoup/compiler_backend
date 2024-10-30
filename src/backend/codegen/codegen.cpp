@@ -2,7 +2,6 @@
 
 #include "codegen.hpp"
 #include "instructions.hpp"
-#include "../../debug/assert.hpp"
 #include "asmgen/asm_nodes.hpp"
 
 void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
