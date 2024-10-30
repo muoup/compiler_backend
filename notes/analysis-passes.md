@@ -15,7 +15,7 @@ are stored uniformly in a vector of a non-polymorphic type.
 
 This does not generate a new tree, rather it generates attached metadata about the data structures in the
 IR AST (i.e. function metadata, instruction metadata, etc.). This may not be necessary in the future
-[note 1](#codegen-order), but for now it allows for things such as finding the first and last instruction 
+[(note 1)](#codegen-order), but for now it allows for things such as finding the first and last instruction 
 a certain labeled operand is used in for more efficient register/memory management.
 
 ### 3. Asm Node Array / Codegen
@@ -36,7 +36,7 @@ instruction by instruction so that each assembly node can emit its own assembly 
 this also allows for the nodes to handle preventing redundancy. In the future it may be possible to use
 this to handle better control flow -- i.e. if a value is moved to a register and then immediated moved from
 that register to another register, this can be squashed into a single move instruction. It is also possible
-however that this will be handled by using a more efficient Codegen pass [note 1](#codegen-order).
+however that this will be handled by using a more efficient Codegen pass [(note 1)](#codegen-order).
 
 ## Notes
 
