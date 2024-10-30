@@ -6,4 +6,6 @@ backend::instruction_metadata::instruction_metadata(const ir::block::block_instr
         : instruction(instruction) {}
 
 backend::function_metadata::function_metadata(const ir::global::function &function)
-        : function(function) {}
+        : function(function) {
+
+}

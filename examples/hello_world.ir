@@ -3,6 +3,6 @@ global_string %msg = "Hello, World!"
 extern fn void puts(ptr %msg)
 
 define fn void main()
-    call puts(%msg)
-    ret void
+    call puts %msg
+    ret
 end

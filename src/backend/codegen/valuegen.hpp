@@ -1,23 +1,30 @@
 #pragma once
 
 #include "registers.hpp"
-#include "valuegen.hpp"
+#include "../../ir/nodes.hpp"
 
 #include <string>
 #include <memory>
 
 namespace backend::codegen {
     struct function_context;
+    struct register_storage;
 
     struct vptr {
+        bool droppable = true;
+
         virtual ~vptr() = default;
-        virtual std::string get_address(size_t size) const = 0;
-        virtual size_t get_size() const { return 8; }
+
+        [[nodiscard]] virtual bool addressable () const { return true; }
+        [[nodiscard]] virtual std::string get_address(size_t size) const = 0;
+        [[nodiscard]] virtual size_t get_size() const { return 8; }
     };
     using virtual_pointer = std::unique_ptr<vptr>;
 
     virtual_pointer stack_allocate(backend::codegen::function_context &context, size_t size);
-    backend::codegen::virtual_pointer find_register(backend::codegen::function_context &context);
+
+    std::unique_ptr<backend::codegen::register_storage> find_register(backend::codegen::function_context &context);
+    std::unique_ptr<backend::codegen::register_storage> force_find_register(backend::codegen::function_context &context);
 
     std::string get_stack_prefix(size_t size);
 
@@ -39,7 +46,7 @@ namespace backend::codegen {
     struct register_storage : vptr {
         backend::codegen::register_t reg;
 
-        explicit register_storage(backend::codegen::register_t reg) : reg(reg) {}
+        explicit register_storage(backend::codegen::register_t reg, size_t size = 8) : reg(reg) {}
         ~register_storage() override = default;
 
         [[nodiscard]] std::string get_address(size_t size) const override {
@@ -51,26 +58,40 @@ namespace backend::codegen {
     };
 
     struct literal : vptr {
-        std::string value;
+        uint64_t value;
 
-        explicit literal(std::string value) : value(std::move(value)) {}
+        explicit literal(uint64_t value) : value(value) {}
         ~literal() override = default;
 
+        [[nodiscard]] bool addressable() const override {
+            return false;
+        }
         [[nodiscard]] std::string get_address(size_t size) const override {
-            return value;
+            return std::to_string(value);
+        }
+    };
+
+    struct global_pointer : vptr {
+        std::string name;
+
+        explicit global_pointer(std::string name) : name(std::move(name)) {}
+        ~global_pointer() override = default;
+
+        [[nodiscard]] std::string get_address(size_t size) const override {
+            return name;
         }
     };
 
     struct icmp_result : vptr {
-        const char* flag;
+        ir::block::icmp_type flag;
 
-        explicit icmp_result(const char* flag) : flag(flag) {}
+        explicit icmp_result(ir::block::icmp_type flag) : flag(flag) {}
         ~icmp_result() override = default;
 
         [[nodiscard]] std::string get_address(size_t size) const override {
             throw std::runtime_error("ICMP result cannot be used as an address");
         }
-        size_t get_size() const override {
+        [[nodiscard]] size_t get_size() const override {
             throw std::runtime_error("ICMP result does not have a size");
         }
     };

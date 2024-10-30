@@ -30,8 +30,6 @@ ir::block::block_instruction parser::parse_instruction(parser::lex_iter_t &start
         debug::assert(start++->value == "=", "Expected =");
     }
 
-    debug::assert(start->type == lexer::token_type::identifier, "Expected identifier");
-
     auto instruction = parser::parse_unassigned_instruction(start, end);
     instruction.assigned_to = assignment;
 
@@ -39,6 +37,15 @@ ir::block::block_instruction parser::parse_instruction(parser::lex_iter_t &start
 }
 
 ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
+    if (start->type == lexer::token_type::number) {
+        return block::block_instruction {
+            std::make_unique<block::literal>(std::stoi(start++->value)),
+            {}
+        };
+    }
+
+    debug::assert(start->type == lexer::token_type::identifier, "Expected identifier");
+
     const auto &instruction = start++->value;
 
     if (instruction == "allocate")
@@ -51,6 +58,8 @@ ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_it
         return generate_instruction<ir::block::icmp, ir::block::icmp_type>(start, end);
     else if (instruction == "branch")
         return generate_instruction<ir::block::branch, std::string, std::string>(start, end);
+    else if (instruction == "jmp")
+        return generate_instruction<ir::block::jmp, std::string>(start, end);
     else if (instruction == "add")
         return generate_instruction<ir::block::arithmetic>(start, end, block::arithmetic_type::add);
     else if (instruction == "sub")
@@ -62,6 +71,10 @@ ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_it
         return generate_instruction<ir::block::ret>(start, end);
     else if (instruction == "call")
         return generate_instruction<ir::block::call, std::string>(start, end);
+    else if (instruction == "phi")
+        return generate_instruction<ir::block::phi, std::string, std::string>(start, end);
+    else if (instruction == "select")
+        return generate_instruction<ir::block::select>(start, end);
     else debug::assert(false, (std::string("Unknown instruction: ") + instruction).c_str());
 
     throw std::runtime_error("Unreachable");

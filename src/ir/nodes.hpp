@@ -36,14 +36,16 @@ namespace ir {
     /**
      *  Seen in IR as either %[name] or %ptr [name]. Represents data
      *  stored somewhere in storage. There is no guarantee it will be
-     *  stored in a register/memory, or even that it is directly stored
+     *  stored in a register/stack memory, or even that it is directly stored
      *  at all.
      */
     struct variable {
         std::string name;
         bool is_pointer;
 
-        explicit variable(std::string name, bool is_pointer) : name(std::move(name)), is_pointer(is_pointer) {}
+        explicit variable(std::string name, bool is_pointer)
+            :   name(std::move(name)), is_pointer(is_pointer) {}
+
         void print(std::ostream &ostream) const {
             ostream << "%";
             if (is_pointer) ostream << "ptr ";
@@ -75,6 +77,10 @@ namespace ir {
             ((ostream << " " << arg), ...);
         }
 
+        enum class node_type {
+            literal, allocate, store, load, branch, jmp, icmp, call, ret, arithmetic, phi, select
+        };
+
         /**
          *  The IR unit of a block. The contract of an instruction
          *  does not promise a certain action will be performed,
@@ -85,9 +91,14 @@ namespace ir {
          *  like an 'add' instruction with no assignment, will be ignored,
          *  as there is no intended functionality with the instruction.
          */
-        struct instruction : virtual node {
+        struct instruction : node {
+            const node_type type;
+
+            explicit instruction(node_type type) : type(type) {}
+
             virtual void print(std::ostream&) const = 0;
             virtual ~instruction() = default;
+            virtual bool dropped_reassignable() const { return true; }
         };
 
         /**
@@ -121,19 +132,36 @@ namespace ir {
         };
 
         /**
-         *  Guarantees that there is a space in memory of @size bytes that can
-         *  be written and read from without the possibility of said memory
-         *  being overwritten, and returns a logical pointer to said memory.
+         *  Allows an alias to be created for an integer literal. This will
+         *  automatically be folded as a constant and will never be allocated
+         *  in actual memory.
+         */
+        struct literal : instruction {
+            uint64_t value;
+
+            explicit literal(uint64_t value)
+                : instruction(node_type::literal), value(value) {}
+            ~literal() override = default;
+
+            void print(std::ostream &ostream) const override {
+                ostream << value;
+            }
+        };
+
+        /**
+         *  Guarantees that there is a space in stack memory of @size bytes that can
+         *  be written and read from without the possibility of said stack memory
+         *  being overwritten, and returns a logical pointer to said stack memory.
          *
-         *  This does not necessarily guarantee stack memory, nor does it
-         *  guarantee that unreferenced parts of this memory will actually
-         *  exist, only that there is some referencable memory of @size bytes.
+         *  This does not necessarily guarantee stack stack memory, nor does it
+         *  guarantee that unreferenced parts of this stack memory will actually
+         *  exist, only that there is some referencable stack memory of @size bytes.
          */
         struct allocate : instruction {
             size_t size;
 
             explicit allocate(size_t allocation_size)
-                : size(allocation_size) {}
+                :   instruction(node_type::allocate), size(allocation_size) {}
 
             PRINT_DEF("allocate", size);
             ~allocate() override = default;
@@ -141,13 +169,13 @@ namespace ir {
 
         /**
          *  Given a logical pointer and an operand of @size bytes, stores
-         *  that value in the memory referenced by the pointer.
+         *  that value in the stack memory referenced by the pointer.
          */
         struct store : instruction {
             uint64_t size;
 
             explicit store(uint64_t size)
-                    : size(size) {}
+                :   instruction(node_type::store), size(size) {}
 
             PRINT_DEF("store", size);
             ~store() override = default;
@@ -155,13 +183,13 @@ namespace ir {
 
         /**
          *  Given a logical pointer, returns @size bytes of data from the
-         *  referenced memory.
+         *  referenced stack memory.
          */
         struct load : instruction {
             uint64_t size;
 
             explicit load(uint64_t size)
-                : size(size) {}
+                :   instruction(node_type::load), size(size) {}
 
             PRINT_DEF("load", size);
             ~load() override = default;
@@ -176,10 +204,26 @@ namespace ir {
             std::string false_branch;
 
             explicit branch(std::string false_branch, std::string true_branch)
-                : true_branch(std::move(true_branch)), false_branch(std::move(false_branch)) {}
+                :   instruction(node_type::branch),
+                    true_branch(std::move(true_branch)),
+                    false_branch(std::move(false_branch)) {}
 
             PRINT_DEF("branch", true_branch, false_branch);
             ~branch() override = default;
+        };
+
+        /**
+         *  Unconditional jump to @label.
+         */
+        struct jmp : instruction {
+            std::string label;
+
+            explicit jmp(std::string branch)
+                : instruction(node_type::jmp),
+                  label(std::move(branch)) {}
+
+            PRINT_DEF("jmp", label);
+            ~jmp() override = default;
         };
 
         enum icmp_type : uint8_t {
@@ -227,7 +271,7 @@ namespace ir {
             icmp_type type;
 
             explicit icmp(icmp_type type)
-                : type(type) {}
+                :   instruction(node_type::icmp), type(type) {}
 
             PRINT_DEF("icmp", icmp_str(type));
             ~icmp() override = default;
@@ -235,13 +279,15 @@ namespace ir {
 
         /**
          *  Invokes a subroutine. Will ensure that all parameters specified are stored in the appropriate
-         *  memory location so that the subroutine can unconditionally reference the parameters it requires.
+         *  stack memory location so that the subroutine can unconditionally reference the parameters it requires.
          */
         struct call : instruction {
             std::string name;
 
             explicit call(std::string name)
-                    : name(std::move(name)) {}
+                :   instruction(node_type::call), name(std::move(name)) {}
+
+            bool dropped_reassignable() const override { return false; }
 
             PRINT_DEF("call", name);
             ~call() override = default;
@@ -249,11 +295,11 @@ namespace ir {
 
         /**
          *  Returns from a subroutine back to the callee.
-         *
-         *  TODO: Handle return values
          */
         struct ret : instruction {
             PRINT_DEF("ret");
+
+            ret() : instruction(node_type::ret) {}
             ~ret() override = default;
         };
 
@@ -269,34 +315,51 @@ namespace ir {
                 case div: return "div";
                 case mod: return "mod";
             }
+
+            throw std::runtime_error("no such arithmetic type");
         }
 
         struct arithmetic : instruction {
             arithmetic_type type;
 
             explicit arithmetic(arithmetic_type type)
-                : type(type) {}
+                :   instruction(node_type::arithmetic), type(type) {}
 
             PRINT_DEF(arithmetic_name(type));
             ~arithmetic() override = default;
         };
 
         /**
-         *  Basic algebraic operator. Adds all arguments provided and
-         *  stores their result in the assignment variable.
+         *  Represents a value which differs depending on the branch taken.
          */
-        struct add : instruction {
-            PRINT_DEF("add");
-            ~add() override = default;
+        struct phi : instruction {
+            std::vector<std::string> branches;
+
+            explicit phi(std::vector<std::string> branches)
+                :   instruction(node_type::phi),
+                    branches(std::move(branches)) {}
+            explicit phi(std::string branch1, std::string branch2)
+                :   instruction(node_type::phi),
+                    branches { std::move(branch1), std::move(branch2) } {}
+
+            void print(std::ostream &ostream) const override {
+                __inst_print(ostream, "phi");
+
+                for (const auto &branch : branches) {
+                    ostream << " " << branch;
+                }
+            };
+
+            ~phi() override = default;
         };
 
-        /**
-         *  Basic algebraic operator. Adds all arguments provided and
-         *  stores their result in the assignment variable.
-         */
-        struct sub : instruction {
-            PRINT_DEF("sub");
-            ~sub() override  = default;
+        struct select : instruction {
+            select() : instruction(node_type::select) {};
+            ~select() override = default;
+
+            bool dropped_reassignable() const override { return false; }
+
+            PRINT_DEF("select");
         };
     }
 
@@ -317,7 +380,8 @@ namespace ir {
             std::string value;
 
             explicit global_string(std::string name, std::string value)
-                : name(std::move(name)), value(std::move(value)) {}
+                :   name(std::move(name)),
+                    value(std::move(value)) {}
         };
 
         struct extern_function : global_node {
@@ -325,7 +389,8 @@ namespace ir {
             std::vector<parameter> parameters;
 
             explicit extern_function(std::string name, std::vector<parameter> parameters)
-                : name(std::move(name)), parameters(std::move(parameters)) {}
+                :   name(std::move(name)),
+                    parameters(std::move(parameters)) {}
         };
 
         struct function : global_node {
@@ -335,8 +400,12 @@ namespace ir {
 
             std::unique_ptr<backend::function_metadata> metadata { nullptr };
 
-            explicit function(std::string name, std::vector<parameter> parameters, std::vector<block::block> blocks)
-                : name(std::move(name)), parameters(std::move(parameters)), blocks(std::move(blocks)) {}
+            explicit function(std::string name,
+                              std::vector<parameter> parameters,
+                              std::vector<block::block> blocks)
+                :   name(std::move(name)),
+                    parameters(std::move(parameters)),
+                    blocks(std::move(blocks)) {}
         };
     }
 

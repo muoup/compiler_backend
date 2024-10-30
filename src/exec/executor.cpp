@@ -7,7 +7,7 @@ std::string get_nasm_command(const char *file) {
 }
 
 std::string get_gcc_command(const char *file) {
-    return "gcc -z noexecstack -o " + std::string(file) + ".out " + file + ".o";
+    return "gcc -no-pie -z noexecstack -o " + std::string(file) + ".out " + file + ".o";
 }
 
 std::string get_run_command(const char *file) {

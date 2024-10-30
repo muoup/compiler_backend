@@ -17,9 +17,13 @@ namespace backend::codegen {
 
     struct instruction_return {
         std::unique_ptr<vptr> return_dest;
-        bool valid = true;
     };
 
+    instruction_return gen_literal(
+            backend::codegen::function_context &context,
+            const ir::block::literal &literal,
+            const v_operands &virtual_operands
+    );
     instruction_return gen_allocate(
             backend::codegen::function_context &context,
             const ir::block::allocate &allocate,
@@ -45,6 +49,11 @@ namespace backend::codegen {
             const ir::block::branch &branch,
             const v_operands &virtual_operands
     );
+    instruction_return gen_jmp(
+            backend::codegen::function_context &context,
+            const ir::block::jmp &jmp,
+            const v_operands &virtual_operands
+    );
     instruction_return gen_return(
             backend::codegen::function_context &context,
             const ir::block::ret &ret,
@@ -60,4 +69,22 @@ namespace backend::codegen {
             const ir::block::call &call,
             const v_operands &virtual_operands
     );
+    instruction_return gen_phi(
+            backend::codegen::function_context &context,
+            const ir::block::phi &phi,
+            const v_operands &virtual_operands
+    );
+    instruction_return gen_select(
+            backend::codegen::function_context &context,
+            const ir::block::select &select,
+            const v_operands &virtual_operands
+    );
+    instruction_return gen_arithmetic_select(
+            backend::codegen::function_context &context,
+            const ir::block::select &select,
+            const backend::codegen::v_operands &virtual_operands
+    );
+
+    const char* jmp_inst(ir::block::icmp_type type);
+    const char* arithmetic_command(ir::block::arithmetic_type type);
 }

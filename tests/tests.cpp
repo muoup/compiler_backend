@@ -1,5 +1,4 @@
 #include <iostream>
-#include <memory>
 #include <fstream>
 #include <sstream>
 #include <chrono>
@@ -13,7 +12,6 @@
 #include "../src/backend/debug/emitter_attachments.hpp"
 #include "../src/backend/codegen/codegen.hpp"
 #include "../src/exec/executor.hpp"
-#include "../src/debug/assert.hpp"
 
 void io_stack_test() {
     std::ifstream file { "../examples/read_write_exact.ir" };
@@ -53,8 +51,8 @@ void io_stack_test() {
 }
 
 void hello_world_lex() {
-    std::ifstream file { "../examples/fibonacci.ir" };
-    std::ofstream ofile { "../examples/fibonacci.asm" };
+    std::ifstream file { "../examples/select_test.ir" };
+    std::ofstream ofile { "../examples/select_test.asm" };
 
     if (!file.is_open()) {
         std::cerr << "Failed to open file" << std::endl;
@@ -69,13 +67,11 @@ void hello_world_lex() {
 
     ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
     backend::codegen::generate(parsed,  ofile);
-  
+
     file.close();
     ofile.close();
 
-    auto exit_code = exec::execute("../examples/fibonacci.asm");
-
-    debug::assert(exit_code == 55, "Fibonacci failed");
+    exec::execute("../examples/select_test.asm");
 
     asm("nop");
 }

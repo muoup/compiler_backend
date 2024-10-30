@@ -2,6 +2,7 @@
 
 #include <ostream>
 #include <vector>
+#include <cstdint>
 
 namespace ir {
     struct root;

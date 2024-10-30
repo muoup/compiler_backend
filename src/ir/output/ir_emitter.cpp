@@ -65,11 +65,11 @@ void ir::output::emit_function(std::ostream &ostream, const ir::global::function
 void ir::output::emit_parameters(std::ostream &ostream, const std::vector<ir::global::parameter> &params) {
     ostream << "(";
 
-    for (auto i = 0; i < params.size(); i++) {
+    for (size_t i = 0; i < params.size(); i++) {
         emit_parameter(ostream, params[i]);
 
         if (i + 1 < params.size())
-            ostream << ",";
+            ostream << ", ";
     }
 
     ostream << ")";
