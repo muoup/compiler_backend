@@ -65,38 +65,6 @@ backend::codegen::instruction_return backend::codegen::gen_load(
     };
 }
 
-const char* backend::codegen::jmp_inst(ir::block::icmp_type type) {
-    switch (type) {
-        using enum ir::block::icmp_type;
-
-        case eq:
-            return "je";
-        case neq:
-            return "jne";
-
-        case slt:
-            return "jl";
-        case sgt:
-            return "jg";
-        case sle:
-            return "jle";
-        case sge:
-            return "jge";
-
-        case ult:
-            return "jb";
-        case ugt:
-            return "ja";
-        case ule:
-            return "jbe";
-        case uge:
-            return "jae";
-
-        default:
-            throw std::runtime_error("no such icmp type");
-    }
-}
-
 backend::codegen::instruction_return backend::codegen::gen_icmp(
         backend::codegen::function_context &context,
         const ir::block::icmp &icmp,

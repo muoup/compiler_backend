@@ -85,6 +85,5 @@ namespace backend::codegen {
             const backend::codegen::v_operands &virtual_operands
     );
 
-    const char* jmp_inst(ir::block::icmp_type type);
     const char* arithmetic_command(ir::block::arithmetic_type type);
 }

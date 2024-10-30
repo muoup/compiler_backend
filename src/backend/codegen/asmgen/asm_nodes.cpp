@@ -71,6 +71,40 @@ namespace backend::as::op {
 }
 
 namespace backend::as::inst {
+    static std::string cond_inst(const char* prefix, ir::block::icmp_type type) {
+        std::string prefix_str { prefix };
+
+        switch (type) {
+            using enum ir::block::icmp_type;
+
+            case eq:
+                return prefix_str + "e";
+            case neq:
+                return prefix_str + "ne";
+
+            case slt:
+                return prefix_str + "l";
+            case sgt:
+                return prefix_str + "g";
+            case sle:
+                return prefix_str + "le";
+            case sge:
+                return prefix_str + "ge";
+
+            case ult:
+                return prefix_str + "b";
+            case ugt:
+                return prefix_str + "a";
+            case ule:
+                return prefix_str + "be";
+            case uge:
+                return prefix_str + "ae";
+
+            default:
+                throw std::runtime_error("no such icmp type");
+        }
+    }
+
     static void print_inst(std::ostream &ostream, const char* name) {
         ostream << '\t' << std::setw(8) << std::left << name;
     }
@@ -111,38 +145,6 @@ namespace backend::as::inst {
         print_inst(context.ostream, "mov", src, dest);
     }
 
-    static const char* cmove_inst(ir::block::icmp_type type) {
-        switch (type) {
-            using enum ir::block::icmp_type;
-
-            case eq:
-                return "cmove";
-            case neq:
-                return "cmovne";
-
-            case slt:
-                return "cmovl";
-            case sgt:
-                return "cmovg";
-            case sle:
-                return "cmovle";
-            case sge:
-                return "cmovge";
-
-            case ult:
-                return "cmovb";
-            case ugt:
-                return "cmova";
-            case ule:
-                return "cmovbe";
-            case uge:
-                return "cmovae";
-
-            default:
-                throw std::runtime_error("no such icmp type");
-        }
-    }
-
     void arith_lea::print(backend::codegen::function_context &context) const {
         print_inst(context.ostream, "lea", dest);
 
@@ -180,7 +182,7 @@ namespace backend::as::inst {
     }
 
     void cmov::print(backend::codegen::function_context &context) const {
-        print_inst(context.ostream, cmove_inst(type), src, dest);
+        print_inst(context.ostream, cond_inst("cmov", type).c_str(), src, dest);
     }
 
     static const char* set_inst(ir::block::icmp_type type) {
@@ -229,7 +231,7 @@ namespace backend::as::inst {
     }
 
     void cond_jmp::print(backend::codegen::function_context &context) const {
-        print_inst(context.ostream, backend::codegen::jmp_inst(type));
+        print_inst(context.ostream, cond_inst("j", type).c_str());
         context.ostream << "." << branch_name;
     }
 
