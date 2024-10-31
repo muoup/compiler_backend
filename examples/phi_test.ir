@@ -1,17 +1,17 @@
 define fn i32 phi(i32 %n)
-    %1 = icmp eq %n, 0
-    branch end true_branch %1
+    %1 = icmp eq i32 %n, i32 0
+    branch end true_branch i32 %1
 
 .true_branch:
-    %2 = 5
-    %cond = icmp eq %n, %2
-    branch end false_branch %cond
+    %2 = i32 5
+    %cond = icmp eq i32 %n, i32 %2
+    branch end false_branch i1 %cond
 
 .false_branch:
-    %3 = 10
+    %3 = i32 10
     jmp end
 
 .end:
-    %4 = phi true_branch false_branch %2, %3
-    ret %4
+    %4 = phi true_branch false_branch i32 %2, i32 %3
+    ret i32 %4
 end

@@ -11,5 +11,5 @@ namespace backend::codegen {
 
     const vptr* empty_register(backend::codegen::function_context &context, backend::codegen::register_t reg);
 
-    backend::codegen::virtual_pointer find_memory(backend::codegen::function_context &context, size_t size);
+    backend::codegen::virtual_pointer find_val_storage(backend::codegen::function_context &context, ir::value_size size);
 }

@@ -51,8 +51,8 @@ void io_stack_test() {
 }
 
 void hello_world_lex() {
-    std::ifstream file { "../examples/select_test.ir" };
-    std::ofstream ofile { "../examples/select_test.asm" };
+    std::ifstream file { "../examples/fibonacci.ir" };
+//    std::ofstream ofile { "../examples/fibonacci.asm" };
 
     if (!file.is_open()) {
         std::cerr << "Failed to open file" << std::endl;
@@ -66,17 +66,17 @@ void hello_world_lex() {
     backend::analyze_ir(parsed);
 
     ir::output::instruction_emitter_attachment = backend::output::attach_variable_drop;
-    backend::codegen::generate(parsed,  ofile);
+    backend::codegen::generate(parsed,std::cout);
 
     file.close();
-    ofile.close();
+//    ofile.close();
 
-    exec::execute("../examples/select_test.asm");
+//    exec::execute("../examples/select_test.asm");
 
     asm("nop");
 }
 
 int main() {
-    io_stack_test();
+//    io_stack_test();
     hello_world_lex();
 }

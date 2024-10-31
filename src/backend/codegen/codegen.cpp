@@ -31,6 +31,7 @@ void backend::codegen::gen_function(const ir::root &root,
 
     backend::codegen::function_context context {
         .root = root,
+        .return_type = ir::value_size::i32,
         .ostream = ostream,
         .current_function = function,
     };
@@ -41,7 +42,9 @@ void backend::codegen::gen_function(const ir::root &root,
 
     for (size_t i = 0; i < function.parameters.size(); i++){
         auto reg = backend::codegen::param_register(i);
-        auto reg_storage = std::make_unique<backend::codegen::register_storage>(reg);
+        auto size = function.parameters[i].size;
+
+        auto reg_storage = std::make_unique<backend::codegen::register_storage>(size, reg);
 
         context.map_value(function.parameters[i].name.c_str(), std::move(reg_storage));
     }
@@ -57,7 +60,7 @@ void backend::codegen::gen_function(const ir::root &root,
                 if (std::holds_alternative<ir::int_literal>(instruction.operands[i].val)) continue;
 
                 const auto &var = std::get<ir::variable>(instruction.operands[i].val);
-                const auto *ptr = context.get_value(var.name.c_str());
+                const auto *ptr = context.get_value(var);
 
                 if (auto *reg = dynamic_cast<const backend::codegen::register_storage*>(ptr)) {
                     context.used_register[reg->reg] = true;
@@ -121,7 +124,7 @@ backend::codegen::instruction_return backend::codegen::gen_instruction(backend::
 
             context.value_map.emplace(
                 std::to_string(literal.value),
-                std::make_unique<backend::codegen::literal>(literal.value)
+                std::make_unique<backend::codegen::literal>(literal.size, literal.value)
             );
 
             operands.emplace_back(

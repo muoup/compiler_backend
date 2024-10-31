@@ -6,21 +6,23 @@
 
 #include <sstream>
 
-std::unique_ptr<backend::codegen::register_storage> backend::codegen::force_find_register(backend::codegen::function_context &context) {
-    if (auto find = backend::codegen::find_register(context))
+std::unique_ptr<backend::codegen::register_storage>
+backend::codegen::force_find_register(backend::codegen::function_context &context, ir::value_size size) {
+    if (auto find = backend::codegen::find_register(context, size); find)
         return find;
 
     backend::codegen::empty_register(context, backend::codegen::register_t::rax);
-    return std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax);
+    return std::make_unique<backend::codegen::register_storage>(size, backend::codegen::register_t::rax);
 }
 
-backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::codegen::function_context &context, size_t size) {
-    context.current_stack_size += size;
+backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::codegen::function_context &context, ir::value_size size) {
+    context.current_stack_size += ir::size_in_bytes(size);
 
-    return std::make_unique<stack_pointer>(context.current_stack_size, size);
+    return std::make_unique<stack_value>(size, context.current_stack_size);
 }
 
-std::unique_ptr<backend::codegen::register_storage> backend::codegen::find_register(backend::codegen::function_context &context) {
+std::unique_ptr<backend::codegen::register_storage>
+backend::codegen::find_register(backend::codegen::function_context &context, ir::value_size size) {
     // First check if any registers are being dropped
     const auto& dropped_data = context.current_instruction->dropped_data;
 
@@ -39,7 +41,7 @@ std::unique_ptr<backend::codegen::register_storage> backend::codegen::find_regis
             if (!reg_storage) continue;
 
             context.used_register[reg_storage->reg] = true;
-            return std::make_unique<backend::codegen::register_storage>(reg_storage->reg);
+            return std::make_unique<backend::codegen::register_storage>(size, reg_storage->reg);
         }
     }
 
@@ -51,7 +53,7 @@ std::unique_ptr<backend::codegen::register_storage> backend::codegen::find_regis
 
         context.dropped_available.erase(iter);
         context.used_register[reg] = true;
-        return std::make_unique<backend::codegen::register_storage>(reg);
+        return std::make_unique<backend::codegen::register_storage>(size, reg);
     }
 
     // Otherwise check to see if any registers can be taken temporarily
@@ -62,14 +64,14 @@ std::unique_ptr<backend::codegen::register_storage> backend::codegen::find_regis
         context.register_tampered[i] = true;
 
         context.used_register[i] = true;
-        return std::make_unique<backend::codegen::register_storage>((register_t) i);
+        return std::make_unique<backend::codegen::register_storage>(size, (register_t) i);
     }
 
     return nullptr;
 }
 
-std::string backend::codegen::get_stack_prefix(size_t size) {
-    switch (size) {
+std::string backend::codegen::get_stack_prefix(ir::value_size size) {
+    switch (ir::size_in_bytes(size)) {
         case 1:
             return "BYTE";
         case 2:

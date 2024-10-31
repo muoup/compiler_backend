@@ -19,7 +19,7 @@ backend::codegen::gen_literal(
     debug::assert(virtual_operands.empty(), "Literal must have no operands");
 
     return backend::codegen::instruction_return {
-        std::make_unique<backend::codegen::literal>(literal.value)
+        std::make_unique<backend::codegen::literal>(literal.get_return_size(), literal.value.value)
     };
 }
 
@@ -30,7 +30,7 @@ backend::codegen::instruction_return backend::codegen::gen_allocate(
 ) {
     debug::assert(virtual_operands.empty(), "Allocation size must be a multiple of 8");
 
-    auto vptr = backend::codegen::stack_allocate(context, allocate.size);
+    auto vptr = backend::codegen::stack_allocate(context, allocate.get_return_size());
     vptr->droppable = false;
 
     return backend::codegen::instruction_return {
@@ -45,7 +45,7 @@ backend::codegen::instruction_return backend::codegen::gen_store(
 ) {
     debug::assert(virtual_operands.size() == 2, "Store instruction must have 2 operands");
 
-    backend::codegen::emit_move(context, virtual_operands[1], virtual_operands[0], store.size);
+    backend::codegen::emit_move(context, virtual_operands[1], virtual_operands[0]);
 
     return backend::codegen::instruction_return {};
 }
@@ -57,8 +57,8 @@ backend::codegen::instruction_return backend::codegen::gen_load(
 ) {
     debug::assert(virtual_operands.size() == 1, "Load instruction must have 2 operands");
 
-    auto dest = backend::codegen::find_memory(context, load.size);
-    backend::codegen::emit_move(context, dest.get(), virtual_operands[0], load.size);
+    auto dest = backend::codegen::find_val_storage(context, load.size);
+    backend::codegen::emit_move(context, dest.get(), virtual_operands[0]);
 
     return {
         .return_dest = std::move(dest)
@@ -108,8 +108,8 @@ backend::codegen::instruction_return backend::codegen::gen_icmp(
     const auto *rhs = context.get_value(virtual_operands[1]);
 
     context.add_asm_node<as::inst::cmp>(
-            as::create_operand(lhs, 8),
-        as::create_operand(rhs, 8)
+            as::create_operand(lhs),
+            as::create_operand(rhs)
     );
 
     return {
@@ -156,12 +156,12 @@ backend::codegen::instruction_return backend::codegen::gen_return(
         const ir::block::ret &,
         const v_operands &virtual_operands
 ) {
-    const static auto rax = std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax);
+    const auto rax = std::make_unique<backend::codegen::register_storage>(context.return_type, backend::codegen::register_t::rax);
 
     debug::assert(virtual_operands.size() <= 1, "Invalid Parameter Count for Return");
 
     if (!virtual_operands.empty())
-        codegen::emit_move(context, rax.get(), virtual_operands[0], 8);
+        codegen::emit_move(context, rax.get(), virtual_operands[0]);
 
     context.add_asm_node<as::inst::ret>();
     return {};
@@ -194,13 +194,13 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic(
 
     const auto rhs = context.get_value(virtual_operands[1]);
 
-    auto reg = backend::codegen::find_register(context);
-    backend::codegen::emit_move(context, reg.get(), virtual_operands[0], 8);
+    auto reg = backend::codegen::find_register(context, rhs->size);
+    backend::codegen::emit_move(context, reg.get(), virtual_operands[0]);
 
     context.add_asm_node<as::inst::arithmetic>(
             arithmetic.type,
-            as::create_operand(reg.get(), 8),
-            as::create_operand(rhs, 8)
+            as::create_operand(reg.get()),
+            as::create_operand(rhs)
     );
 
     return {
@@ -224,7 +224,7 @@ backend::codegen::instruction_return backend::codegen::gen_call(
     context.add_asm_node<as::inst::call>(call.name);
 
     return {
-        .return_dest = std::make_unique<backend::codegen::register_storage>(backend::codegen::register_t::rax)
+        .return_dest = std::make_unique<backend::codegen::register_storage>(call.get_return_size(), codegen::register_t::rax)
     };
 }
 
@@ -234,7 +234,7 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
         const backend::codegen::v_operands &virtual_operands
 ) {
     debug::assert(virtual_operands.size() == phi.branches.size(), "Invalid Parameter Count for Phi");
-    auto mem = backend::codegen::find_memory(context, 8);
+    auto mem = backend::codegen::find_val_storage(context, phi.get_return_size());
     const auto &phi_block = context.current_label->name;
 
     for (size_t op = 0; op < virtual_operands.size(); op++) {
@@ -247,8 +247,8 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
 
         if (nodes.empty()) {
             nodes.emplace_back(std::make_unique<as::inst::mov>(
-                    as::create_operand(mem.get(), 8),
-                as::create_operand(val, 8)
+                    as::create_operand(mem.get()),
+                    as::create_operand(val)
             ));
             continue;
         }
@@ -260,8 +260,8 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
                 if (jmp->label_name != phi_block) continue;
 
                 nodes.insert(iter, std::make_unique<as::inst::mov>(
-                        as::create_operand(mem.get(), 8),
-                    as::create_operand(val, 8)
+                        as::create_operand(mem.get()),
+                        as::create_operand(val)
                 ));
                 i++;
             } else if (auto *cond_jmp = dynamic_cast<as::inst::cond_jmp*>(iter->get())) {
@@ -276,7 +276,7 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
                 auto cached_context = context.current_label;
                 context.current_label = &temp_block;
 
-                codegen::emit_move(context, mem.get(), val_name, 8);
+                codegen::emit_move(context, mem.get(), val_name);
 
                 context.current_label = cached_context;
 
@@ -349,17 +349,17 @@ backend::codegen::instruction_return backend::codegen::gen_select(
         icmp_type = invert(icmp->flag);
     }
 
-    auto mem = backend::codegen::find_memory(context, 8);
+    auto mem = backend::codegen::find_val_storage(context, select.get_return_size());
 
     context.add_asm_node<as::inst::mov>(
-        as::create_operand(mem.get(), 8),
-        as::create_operand(rhs, 8)
+            as::create_operand(mem.get()),
+        as::create_operand(rhs)
     );
 
     context.add_asm_node<as::inst::cmov>(
         icmp_type,
-        as::create_operand(mem.get(), 8),
-        as::create_operand(lhs, 8)
+        as::create_operand(mem.get()),
+        as::create_operand(lhs)
     );
 
     return {
@@ -378,6 +378,8 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic_select(
     auto *lhs = context.get_value(virtual_operands[1]);
     auto *rhs = context.get_value(virtual_operands[2]);
 
+    debug::assert(lhs->size == rhs->size, "Select Operands must be the same size");
+
     const auto *icmp = dynamic_cast<const backend::codegen::icmp_result*>(cond);
     const auto *lhs_imm = dynamic_cast<const backend::codegen::literal*>(lhs);
     const auto *rhs_imm = dynamic_cast<const backend::codegen::literal*>(rhs);
@@ -389,19 +391,19 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic_select(
     auto global_off = (int64_t) lhs_imm->value;
     auto global_multi = (int64_t) rhs_imm->value - global_off;
 
-    auto mem = codegen::force_find_register(context);
+    auto mem = codegen::force_find_register(context, lhs->size);
 
     context.add_asm_node<as::inst::set>(
         icmp->flag,
-        as::create_operand(mem.get(), 1)
+        as::create_operand(mem.get())
     );
 
     context.add_asm_node<as::inst::arith_lea>(
-        as::create_operand(mem.get(), 8),
+        as::create_operand(mem.get()),
         global_off,
         std::nullopt,
         std::abs(global_multi),
-        mem->reg
+        as::inst::explicit_register { mem->reg, mem->size }
     );
 
     return {
