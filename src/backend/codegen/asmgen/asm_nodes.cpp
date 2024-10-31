@@ -71,7 +71,7 @@ namespace backend::as::op {
 }
 
 namespace backend::as::inst {
-    static std::string cond_inst(const char* prefix, ir::block::icmp_type type) {
+    constexpr static std::string cond_inst(const char* prefix, ir::block::icmp_type type) {
         std::string prefix_str { prefix };
 
         switch (type) {
@@ -105,7 +105,7 @@ namespace backend::as::inst {
         }
     }
 
-    static const char* arithmetic_command(ir::block::arithmetic_type type) {
+    constexpr static const char* arithmetic_command(ir::block::arithmetic_type type) {
         switch (type) {
             using enum ir::block::arithmetic_type;
 
