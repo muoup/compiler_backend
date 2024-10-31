@@ -105,6 +105,24 @@ namespace backend::as::inst {
         }
     }
 
+    static const char* arithmetic_command(ir::block::arithmetic_type type) {
+        switch (type) {
+            using enum ir::block::arithmetic_type;
+
+            case add:
+                return "add";
+            case sub:
+                return "sub";
+            case mul:
+                return "imul";
+            case div:
+                return "idiv";
+
+            default:
+                throw std::runtime_error("no such arithmetic type");
+        }
+    }
+
     static void print_inst(std::ostream &ostream, const char* name) {
         ostream << '\t' << std::setw(8) << std::left << name;
     }
@@ -185,40 +203,8 @@ namespace backend::as::inst {
         print_inst(context.ostream, cond_inst("cmov", type).c_str(), src, dest);
     }
 
-    static const char* set_inst(ir::block::icmp_type type) {
-        switch (type) {
-            using enum ir::block::icmp_type;
-
-            case eq:
-                return "sete";
-            case neq:
-                return "setne";
-
-            case slt:
-                return "setl";
-            case sgt:
-                return "setg";
-            case sle:
-                return "setle";
-            case sge:
-                return "setge";
-
-            case ult:
-                return "setb";
-            case ugt:
-                return "seta";
-            case ule:
-                return "setbe";
-            case uge:
-                return "setae";
-
-            default:
-                throw std::runtime_error("no such icmp type");
-        }
-    }
-
     void set::print(backend::codegen::function_context &context) const {
-        print_inst(context.ostream, set_inst(type), op);
+        print_inst(context.ostream, cond_inst("set", type).c_str(), op);
     }
 
     void jmp::print(backend::codegen::function_context &context) const {
@@ -236,7 +222,7 @@ namespace backend::as::inst {
     }
 
     void arithmetic::print(backend::codegen::function_context &context) const {
-        const auto *cmd = backend::codegen::arithmetic_command(type);
+        const auto *cmd = arithmetic_command(type);
 
         print_inst(context.ostream, cmd, oper1, oper2);
     }

@@ -135,24 +135,6 @@ backend::codegen::instruction_return backend::codegen::gen_return(
     return {};
 }
 
-const char* backend::codegen::arithmetic_command(ir::block::arithmetic_type type) {
-    switch (type) {
-        using enum ir::block::arithmetic_type;
-
-        case add:
-            return "add";
-        case sub:
-            return "sub";
-        case mul:
-            return "imul";
-        case div:
-            return "idiv";
-
-        default:
-            throw std::runtime_error("no such arithmetic type");
-    }
-}
-
 backend::codegen::instruction_return backend::codegen::gen_arithmetic(
         backend::codegen::function_context &context,
         const ir::block::arithmetic &arithmetic,
