@@ -67,6 +67,9 @@ void backend::codegen::gen_function(const ir::root &root,
                 if (auto *reg_storage = dynamic_cast<const backend::codegen::register_storage*>(val)) {
                     context.dropped_available.emplace_back(reg_storage->reg);
                 }
+
+                if (context.dropped_reassignable)
+                    context.remove_ownership(val);
             }
 
             context.current_instruction = instruction.metadata.get();

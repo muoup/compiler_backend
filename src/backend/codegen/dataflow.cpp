@@ -14,11 +14,13 @@ void backend::codegen::empty_value(backend::codegen::function_context &context, 
 void backend::codegen::copy_to_register(backend::codegen::function_context &context,
                                         std::string_view value,
                                         backend::codegen::register_t reg) {
-    auto val_size = context.get_value(value)->size;
-    auto new_memory = std::make_unique<backend::codegen::register_storage>(val_size, reg);
+    auto val = context.get_value(value);
+    auto new_memory = std::make_unique<backend::codegen::register_storage>(val->size, reg);
 
-    backend::codegen::empty_register(context, reg);
-    backend::codegen::emit_move(context, new_memory.get(), value);
+    if (auto *val_reg = dynamic_cast<backend::codegen::register_storage*>(val); val_reg && val_reg->reg != reg) {
+        backend::codegen::empty_register(context, reg);
+        backend::codegen::emit_move(context, new_memory.get(), value);
+    }
 }
 
 const backend::codegen::vptr* backend::codegen::empty_register(backend::codegen::function_context &context, backend::codegen::register_t reg) {
