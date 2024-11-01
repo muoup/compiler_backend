@@ -11,88 +11,66 @@ namespace backend::codegen {
     struct register_storage;
 
     struct vptr {
+        ir::value_size size;
         bool droppable = true;
 
+        explicit vptr(ir::value_size size) : size(size) {}
         virtual ~vptr() = default;
 
         [[nodiscard]] virtual bool addressable () const { return true; }
-        [[nodiscard]] virtual std::string get_address(size_t size) const = 0;
-        [[nodiscard]] virtual size_t get_size() const { return 8; }
     };
     using virtual_pointer = std::unique_ptr<vptr>;
 
-    virtual_pointer stack_allocate(backend::codegen::function_context &context, size_t size);
+    virtual_pointer stack_allocate(backend::codegen::function_context &context, ir::value_size size);
 
-    std::unique_ptr<backend::codegen::register_storage> find_register(backend::codegen::function_context &context);
-    std::unique_ptr<backend::codegen::register_storage> force_find_register(backend::codegen::function_context &context);
+    std::unique_ptr<backend::codegen::register_storage>
+    find_register(backend::codegen::function_context &context, ir::value_size size);
+    std::unique_ptr<backend::codegen::register_storage>
+    force_find_register(backend::codegen::function_context &context, ir::value_size size);
 
-    std::string get_stack_prefix(size_t size);
+    std::string get_stack_prefix(ir::value_size size);
 
-    struct stack_pointer : vptr {
+    struct stack_value : vptr {
         size_t rsp_off;
-        size_t alloc_size;
 
-        explicit stack_pointer(size_t rsp_off, size_t alloc_size) : rsp_off(rsp_off), alloc_size(alloc_size) {}
-        ~stack_pointer() override = default;
-
-        [[nodiscard]] std::string get_address(size_t size) const override {
-            return get_stack_prefix(size) + " [rbp - " + std::to_string(rsp_off) + "]";
-        }
-        [[nodiscard]] size_t get_size() const override {
-            return rsp_off;
-        }
+        explicit stack_value(ir::value_size size, size_t rsp_off)
+            : vptr(size), rsp_off(rsp_off) {}
+        ~stack_value() override = default;
     };
 
     struct register_storage : vptr {
         backend::codegen::register_t reg;
 
-        explicit register_storage(backend::codegen::register_t reg, size_t size = 8) : reg(reg) {}
+        explicit register_storage(ir::value_size size, backend::codegen::register_t reg)
+            : vptr(size), reg(reg) {}
         ~register_storage() override = default;
-
-        [[nodiscard]] std::string get_address(size_t size) const override {
-            return backend::codegen::register_as_string(reg, size);
-        }
-        [[nodiscard]] size_t get_size() const override {
-            return 8;
-        }
     };
 
     struct literal : vptr {
         uint64_t value;
 
-        explicit literal(uint64_t value) : value(value) {}
+        explicit literal(ir::value_size size, uint64_t value)
+            : vptr(size), value(value) {}
         ~literal() override = default;
 
         [[nodiscard]] bool addressable() const override {
             return false;
-        }
-        [[nodiscard]] std::string get_address(size_t size) const override {
-            return std::to_string(value);
         }
     };
 
     struct global_pointer : vptr {
         std::string name;
 
-        explicit global_pointer(std::string name) : name(std::move(name)) {}
+        explicit global_pointer(std::string name)
+            : vptr(ir::value_size::ptr), name(std::move(name)) {}
         ~global_pointer() override = default;
-
-        [[nodiscard]] std::string get_address(size_t size) const override {
-            return name;
-        }
     };
 
     struct icmp_result : vptr {
         ir::block::icmp_type flag;
 
-        explicit icmp_result(ir::block::icmp_type flag) : flag(flag) {}
+        explicit icmp_result(ir::block::icmp_type flag)
+            : vptr(ir::value_size::i1), flag(flag) {}
         ~icmp_result() override = default;
-
-        [[nodiscard]] std::string get_address(size_t size) const override {
-            throw std::runtime_error("ICMP result cannot be used as an address");
-        }
-        [[nodiscard]] size_t get_size() const override {
-            throw std::runtime_error("ICMP result does not have a size");
-        }
     };
 }

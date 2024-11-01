@@ -32,6 +32,7 @@ namespace backend::codegen {
 
     struct function_context {
         const ir::root& root;
+        const ir::value_size return_type;
 
         std::ostream& ostream;
         std::vector<backend::as::label> asm_blocks;
@@ -76,6 +77,26 @@ namespace backend::codegen {
             }
 
             throw std::runtime_error("Value not found");
+        }
+
+        const vptr* get_value(const ir::variable &var) {
+            auto ptr = get_value(var.name.c_str());
+
+            debug::assert(ptr->size == var.size, "Variable size mismatch");
+
+            return ptr;
+        }
+
+        const vptr* get_value(const ir::int_literal &var) {
+            auto ptr = get_value(std::to_string(var.value).c_str());
+
+            debug::assert(ptr->size == var.size, "Variable size mismatch");
+
+            return ptr;
+        }
+
+        const vptr* get_value(const ir::value &value) {
+            return std::visit([&](auto &&arg) { return get_value(arg); }, value.val);
         }
 
         void map_value(const char* name, virtual_pointer value) {

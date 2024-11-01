@@ -1,3 +1,4 @@
+#include <iostream>
 #include "element_parsers.hpp"
 
 #include "../../debug/assert.hpp"
@@ -26,7 +27,7 @@ ir::block::block_instruction parser::parse_instruction(parser::lex_iter_t &start
     std::optional<ir::variable> assignment {};
 
     if (start->value == "%") {
-        assignment = parser::parse_variable(start, end);
+        assignment = parser::parse_variable(start, end, ir::value_size::none);
         debug::assert(start++->value == "=", "Expected =");
     }
 
@@ -37,9 +38,16 @@ ir::block::block_instruction parser::parse_instruction(parser::lex_iter_t &start
 }
 
 ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
-    if (start->type == lexer::token_type::number) {
+    if (auto size = maybe_value_size(start, end); size.has_value()) {
+        debug::assert(start->type == lexer::token_type::number, "Expected integer");
+
         return block::block_instruction {
-            std::make_unique<block::literal>(std::stoi(start++->value)),
+            std::make_unique<block::literal>(
+                    ir::int_literal {
+                                *size,
+                                static_cast<uint64_t>(std::stoi(start++->value))
+                        }
+                    ),
             {}
         };
     }
@@ -53,7 +61,7 @@ ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_it
     else if (instruction == "store")
         return generate_instruction<ir::block::store, uint8_t>(start, end);
     else if (instruction == "load")
-        return generate_instruction<ir::block::load, uint8_t>(start, end);
+        return generate_instruction<ir::block::load, value_size>(start, end);
     else if (instruction == "icmp")
         return generate_instruction<ir::block::icmp, ir::block::icmp_type>(start, end);
     else if (instruction == "branch")
@@ -102,27 +110,55 @@ std::vector<value> parser::parse_operands(ir::parser::lex_iter_t &start, ir::par
     return operands;
 }
 
+std::optional<ir::value_size> parser::maybe_value_size(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {\
+    std::string_view size = start->value;
+
+    if (size == "i8") return value_size::i8;
+    if (size == "i1") return value_size::i1;
+    if (size == "i16") return value_size::i16;
+    if (size == "i32") return value_size::i32;
+    if (size == "i64") return value_size::i64;
+    if (size == "ptr") return value_size::ptr;
+
+    return std::nullopt;
+}
+
+value_size parser::parse_value_size(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
+    if (auto size = maybe_value_size(start, end); size.has_value()) {
+        start++;
+        return *size;
+    }
+
+    std::cout << "WARNING: No value size specified, this will not be supported in the future!" << '\n';
+    std::cout << "Defaulting to i32" << '\n';
+
+    return value_size::i32;
+}
+
+variable parser::parse_variable(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end, ir::value_size size) {
+    debug::assert(start++->value == "%", "Expected %");
+
+    return variable { size, start++->value };
+}
+
 value parser::parse_value(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
+    auto size = parse_value_size(start, end);
+
     if (start->value == "%") {
-        return ir::value { parse_variable(start, end) };
+        start++;
+        return ir::value {
+            ir::variable { size, start++->value }
+        };
     } else if (start->type == lexer::token_type::number) {
         return ir::value{
-            ir::int_literal{
-                    static_cast<uint64_t>(std::stoi(start++->value))
+            ir::int_literal {
+                size,
+                static_cast<uint64_t>(std::stoi(start++->value))
             }
         };
     }
 
     throw std::runtime_error("Value parsing failed");
-}
-
-variable parser::parse_variable(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t) {
-    debug::assert(start++->value == "%", "Expected %");
-
-    bool is_ptr = start->value == "ptr" && (start++, true);
-    auto value = start++->value;
-
-    return ir::variable { std::move(value), is_ptr };
 }
 
 ir::block::icmp_type parser::parse_icmp_type(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t) {

@@ -18,9 +18,9 @@ namespace backend::as {
     namespace op {
         struct operand_t {
             const operand_types type;
-            uint8_t size;
+            ir::value_size size;
 
-            explicit operand_t(operand_types type, uint8_t size) : type(type), size(size) {}
+            explicit operand_t(operand_types type, ir::value_size size) : type(type), size(size) {}
             virtual ~operand_t() = default;
 
             [[nodiscard]] virtual std::string get_address() const = 0;
@@ -30,6 +30,11 @@ namespace backend::as {
 
     namespace inst {
         using operand = std::unique_ptr<op::operand_t>;
+
+        struct explicit_register {
+            backend::codegen::register_t reg;
+            ir::value_size size;
+        };
 
         struct asm_node {
             bool is_valid = true;
@@ -65,13 +70,14 @@ namespace backend::as {
             operand dest;
 
             std::optional<int64_t> offset;
-            std::optional<register_t> reg1;
+            std::optional<explicit_register> reg1;
 
             std::optional<int64_t> reg2_mul;
-            std::optional<register_t> reg2;
+            std::optional<explicit_register> reg2;
 
-            arith_lea(operand dest, std::optional<int64_t> offset, std::optional<register_t> reg1,
-                      std::optional<int64_t> reg2_mul, std::optional<register_t> reg2)
+            arith_lea(operand dest,
+                      std::optional<int64_t> offset, std::optional<explicit_register> reg1,
+                      std::optional<int64_t> reg2_mul, std::optional<explicit_register> reg2)
                     : dest(std::move(dest)), offset(offset), reg1(reg1), reg2_mul(reg2_mul), reg2(reg2) {}
 
             ~arith_lea() override = default;
@@ -98,7 +104,7 @@ namespace backend::as {
             set(ir::block::icmp_type type, operand op)
                     : type(type), op(std::move(op)) {
                 debug::assert(this->op->type == operand_types::reg, "set operand must be a register");
-                debug::assert(this->op->size == 1, "set operand must be 1 byte");
+                debug::assert(this->op->size == ir::value_size::i1, "set operand must be 1 byte");
             }
 
             ~set() override = default;
@@ -176,5 +182,5 @@ namespace backend::as {
         std::vector<std::unique_ptr<inst::asm_node>> nodes;
     };
 
-    std::unique_ptr<backend::as::op::operand_t> create_operand(const codegen::vptr *vptr, size_t size);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(const codegen::vptr *vptr);
 }

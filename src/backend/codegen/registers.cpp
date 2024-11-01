@@ -33,12 +33,12 @@ codegen::register_t codegen::param_register(uint8_t index) {
     return call_registers[index];
 }
 
-const char * codegen::param_register_string(uint8_t index, size_t size) {
+const char * codegen::param_register_string(uint8_t index, ir::value_size size) {
     return register_as_string(param_register(index), size);
 }
 
-const char * codegen::register_as_string(backend::codegen::register_t reg, size_t size) {
-    switch (size) {
+const char * codegen::register_as_string(backend::codegen::register_t reg, ir::value_size size) {
+    switch (ir::size_in_bytes(size)) {
         case 1:
             return register_name[reg][0];
         case 2:

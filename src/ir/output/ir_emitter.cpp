@@ -62,42 +62,15 @@ void ir::output::emit_function(std::ostream &ostream, const ir::global::function
     ostream << "end";
 }
 
-void ir::output::emit_parameters(std::ostream &ostream, const std::vector<ir::global::parameter> &params) {
+void ir::output::emit_parameters(std::ostream &ostream, const std::vector<ir::variable> &params) {
     ostream << "(";
 
     for (size_t i = 0; i < params.size(); i++) {
-        emit_parameter(ostream, params[i]);
+        params[i].print(ostream);
 
         if (i + 1 < params.size())
             ostream << ", ";
     }
 
     ostream << ")";
-}
-
-void ir::output::emit_parameter(std::ostream &ostream, const ir::global::parameter &param) {
-    emit_param_type(ostream, param.type);
-
-    ostream << " %" << param.name;
-}
-
-void ir::output::emit_param_type(std::ostream &ostream, const ir::global::parameter_type type) {
-    switch (type) {
-        using enum ir::global::parameter_type;
-
-        case i8:
-            ostream << "i8";
-            break;
-        case i16:
-            ostream << "i16";
-            break;
-        case i32:
-            ostream << "i32";
-            break;
-        case i64:
-            ostream << "i64";
-            break;
-        case ptr:
-            ostream << "ptr";
-    }
 }

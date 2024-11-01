@@ -2,6 +2,7 @@
 
 #include "nodes.hpp"
 #include "../backend/ir_analyzer/node_metadata.hpp"
+#include "../debug/assert.hpp"
 
 #include <string>
 #include <utility>
@@ -18,6 +19,45 @@ namespace ir {
         struct global_node;
     }
 
+    enum class value_size : uint8_t {
+        i1, i8, i16, i32, i64, ptr,
+
+        // Not for parser use, nodes used in codegen
+        none, param_dependent
+    };
+
+    inline const char* value_size_str(value_size size) {
+        switch (size) {
+            case value_size::i1: return "i1";
+            case value_size::i8: return "i8";
+            case value_size::i16: return "i16";
+            case value_size::i32: return "i32";
+            case value_size::i64: return "i64";
+            case value_size::ptr: return "ptr";
+
+            default:
+                debug::assert(false, "value size not specified");
+        }
+
+        throw std::runtime_error("unreachable");
+    }
+
+    inline int size_in_bytes(value_size size) {
+        switch (size) {
+            case value_size::i1:
+            case value_size::i8: return 1;
+            case value_size::i16: return 2;
+            case value_size::i32: return 4;
+            case value_size::i64:
+            case value_size::ptr: return 8;
+
+            default:
+                debug::assert(false, "value size not specified");
+        }
+
+        throw std::runtime_error("unreachable");
+    }
+
     struct node {};
 
     /**
@@ -25,31 +65,30 @@ namespace ir {
      *  should match the size of the operation it is involved in.
      */
     struct int_literal {
+        value_size size;
         uint64_t value;
 
-        explicit int_literal(uint64_t value) : value(value) {}
+        explicit int_literal(value_size size, uint64_t value) : size(size), value(value) {}
         void print(std::ostream &ostream) const {
             ostream << (unsigned int) value;
         }
     };
 
     /**
-     *  Seen in IR as either %[name] or %ptr [name]. Represents data
+     *  Seen in IR as either [size] %[name] or [size] %[name]. Represents data
      *  stored somewhere in storage. There is no guarantee it will be
      *  stored in a register/stack memory, or even that it is directly stored
-     *  at all.
+     *  at all if not required.
      */
     struct variable {
+        value_size size;
         std::string name;
-        bool is_pointer;
 
-        explicit variable(std::string name, bool is_pointer)
-            :   name(std::move(name)), is_pointer(is_pointer) {}
+        explicit variable(value_size size, std::string name)
+            :   size(size), name(std::move(name)) {}
 
         void print(std::ostream &ostream) const {
-            ostream << "%";
-            if (is_pointer) ostream << "ptr ";
-            ostream << name;
+            ostream << value_size_str(size) << " %" << name;
         }
     };
 
@@ -67,6 +106,9 @@ namespace ir {
         friend std::ostream& operator <<(std::ostream &ostream, const value& value) {
             std::visit([&](auto&& arg) { arg.print(ostream); }, value.val);
             return ostream;
+        }
+        [[nodiscard]] value_size get_size() const {
+            return std::visit([](auto&& arg) -> value_size { return arg.size; }, val);
         }
     };
 
@@ -95,10 +137,12 @@ namespace ir {
             const node_type type;
 
             explicit instruction(node_type type) : type(type) {}
+            virtual ~instruction() = default;
 
             virtual void print(std::ostream&) const = 0;
-            virtual ~instruction() = default;
-            virtual bool dropped_reassignable() const { return true; }
+
+            [[nodiscard]] virtual bool dropped_reassignable() const { return true; }
+            [[nodiscard]] virtual ir::value_size get_return_size() const { return ir::value_size::none; }
         };
 
         /**
@@ -115,7 +159,25 @@ namespace ir {
 
             explicit block_instruction(std::unique_ptr<instruction> instruction,
                                        std::vector<value> operands)
-                :   inst(std::move(instruction)), operands(std::move(operands)) {}
+                :   inst(std::move(instruction)), operands(std::move(operands)) {
+                if (assigned_to == std::nullopt)
+                    return;
+
+                const auto size = instruction->get_return_size();
+                debug::assert(size != ir::value_size::none, "instruction with no return size assigned to variable");
+
+                if (size == ir::value_size::param_dependent) {
+                    debug::assert(!operands.empty(), "param dependent size with multiple operands");
+
+                    auto o0_size = operands[0].get_size();
+
+                    for (const auto &operand : operands) {
+                        debug::assert(operand.get_size() == o0_size, "param dependent size with mismatched operand sizes");
+                    }
+
+                    assigned_to->size = o0_size;
+                }
+            }
 
             void print(std::ostream &ostream) const;
         };
@@ -137,15 +199,17 @@ namespace ir {
          *  in actual memory.
          */
         struct literal : instruction {
-            uint64_t value;
+            ir::int_literal value;
 
-            explicit literal(uint64_t value)
+            explicit literal(ir::int_literal value)
                 : instruction(node_type::literal), value(value) {}
             ~literal() override = default;
 
             void print(std::ostream &ostream) const override {
-                ostream << value;
+                ostream << value.value;
             }
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return value.size; }
         };
 
         /**
@@ -165,6 +229,8 @@ namespace ir {
 
             PRINT_DEF("allocate", size);
             ~allocate() override = default;
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::ptr; }
         };
 
         /**
@@ -186,13 +252,15 @@ namespace ir {
          *  referenced stack memory.
          */
         struct load : instruction {
-            uint64_t size;
+            value_size size;
 
-            explicit load(uint64_t size)
+            explicit load(value_size size)
                 :   instruction(node_type::load), size(size) {}
 
-            PRINT_DEF("load", size);
+            PRINT_DEF("load", ir::value_size_str(size));
             ~load() override = default;
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return size; }
         };
 
         /**
@@ -275,6 +343,8 @@ namespace ir {
 
             PRINT_DEF("icmp", icmp_str(type));
             ~icmp() override = default;
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::i1; }
         };
 
         /**
@@ -287,10 +357,12 @@ namespace ir {
             explicit call(std::string name)
                 :   instruction(node_type::call), name(std::move(name)) {}
 
-            bool dropped_reassignable() const override { return false; }
+            [[nodiscard]] bool dropped_reassignable() const override { return false; }
 
             PRINT_DEF("call", name);
             ~call() override = default;
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::i32; }
         };
 
         /**
@@ -327,6 +399,8 @@ namespace ir {
 
             PRINT_DEF(arithmetic_name(type));
             ~arithmetic() override = default;
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::i32; }
         };
 
         /**
@@ -351,13 +425,16 @@ namespace ir {
             };
 
             ~phi() override = default;
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::param_dependent; }
         };
 
         struct select : instruction {
             select() : instruction(node_type::select) {};
             ~select() override = default;
 
-            bool dropped_reassignable() const override { return false; }
+            [[nodiscard]] bool dropped_reassignable() const override { return false; }
+            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::param_dependent; }
 
             PRINT_DEF("select");
         };
@@ -365,15 +442,6 @@ namespace ir {
 
     namespace global {
         struct global_node : node {};
-
-        enum parameter_type : uint8_t {
-            i8, i16, i32, i64, ptr
-        };
-
-        struct parameter {
-            parameter_type type;
-            std::string name;
-        };
 
         struct global_string : global_node {
             std::string name;
@@ -386,22 +454,22 @@ namespace ir {
 
         struct extern_function : global_node {
             std::string name;
-            std::vector<parameter> parameters;
+            std::vector<variable> parameters;
 
-            explicit extern_function(std::string name, std::vector<parameter> parameters)
+            explicit extern_function(std::string name, std::vector<variable> parameters)
                 :   name(std::move(name)),
                     parameters(std::move(parameters)) {}
         };
 
         struct function : global_node {
             std::string name;
-            std::vector<parameter> parameters;
+            std::vector<variable> parameters;
             std::vector<block::block> blocks;
 
             std::unique_ptr<backend::function_metadata> metadata { nullptr };
 
             explicit function(std::string name,
-                              std::vector<parameter> parameters,
+                              std::vector<variable> parameters,
                               std::vector<block::block> blocks)
                 :   name(std::move(name)),
                     parameters(std::move(parameters)),
