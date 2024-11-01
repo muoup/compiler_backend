@@ -32,7 +32,6 @@ void backend::codegen::gen_function(const ir::root &root,
     backend::codegen::function_context context {
         .root = root,
         .ostream = ostream,
-        .current_function = function,
     };
 
     context.asm_blocks.emplace_back("__stacksave");
