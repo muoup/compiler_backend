@@ -4,9 +4,8 @@
 
 #include "codegen.hpp"
 #include "valuegen.hpp"
-#include "asmgen/asm_interface.hpp"
+#include "asmgen/interface.hpp"
 
-#include "../../debug/assert.hpp"
 #include "dataflow.hpp"
 #include "asmgen/asm_nodes.hpp"
 

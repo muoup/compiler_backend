@@ -1,4 +1,4 @@
-#include "asm_interface.hpp"
+#include "interface.hpp"
 
 #include "../codegen.hpp"
 #include "asm_nodes.hpp"

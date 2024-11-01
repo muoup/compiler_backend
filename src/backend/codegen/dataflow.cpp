@@ -1,6 +1,6 @@
 #include "dataflow.hpp"
 #include "codegen.hpp"
-#include "asmgen/asm_interface.hpp"
+#include "asmgen/interface.hpp"
 
 void backend::codegen::empty_value(backend::codegen::function_context &context, const char *value) {
     auto &vmem = context.value_map.at(value);

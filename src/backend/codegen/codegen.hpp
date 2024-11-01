@@ -22,7 +22,6 @@ namespace backend::codegen {
 
         backend::as::label *current_label;
 
-        const ir::global::function &current_function;
         const backend::md::instruction_metadata *current_instruction;
 
         std::unordered_map<std::string, virtual_pointer> value_map;
