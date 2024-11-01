@@ -218,7 +218,7 @@ backend::codegen::instruction_return backend::codegen::gen_call(
     for (size_t i = 0; i < virtual_operands.size(); i++) {
         const auto param_reg_id = backend::codegen::param_register((uint8_t) i);
 
-        move_to_register(context, virtual_operands[i], param_reg_id);
+        copy_to_register(context, virtual_operands[i], param_reg_id);
     }
 
     context.add_asm_node<as::inst::call>(call.name);

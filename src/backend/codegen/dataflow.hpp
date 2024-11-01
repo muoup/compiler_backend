@@ -7,7 +7,7 @@ namespace backend::codegen {
     enum register_t : uint8_t;
 
     void empty_value(backend::codegen::function_context &context, const char* value);
-    void move_to_register(backend::codegen::function_context &context, std::string_view value, backend::codegen::register_t reg);
+    void copy_to_register(backend::codegen::function_context &context, std::string_view value, backend::codegen::register_t reg);
 
     const vptr* empty_register(backend::codegen::function_context &context, backend::codegen::register_t reg);
 
