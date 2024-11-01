@@ -47,6 +47,7 @@ void backend::codegen::gen_function(const ir::root &root,
         auto reg_storage = std::make_unique<backend::codegen::register_storage>(size, reg);
 
         context.map_value(function.parameters[i].name.c_str(), std::move(reg_storage));
+        context.register_parameter[reg] = true;
     }
 
     for (const auto &block : function.blocks) {
@@ -54,24 +55,28 @@ void backend::codegen::gen_function(const ir::root &root,
         context.current_label = &context.asm_blocks.back();
 
         for (const auto &instruction : block.instructions) {
+            // Do not drop the value, but allow the compiler to reassign to by the end of the instruction
+            // unless the instruction explicitly says that is not allowed
             for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
                 if (!instruction.metadata->dropped_data[i]) continue;
-
-                if (std::holds_alternative<ir::int_literal>(instruction.operands[i].val)) continue;
+                if (!std::holds_alternative<ir::variable>(instruction.operands[i].val)) continue;
 
                 const auto &var = std::get<ir::variable>(instruction.operands[i].val);
-                const auto *ptr = context.get_value(var);
+                const auto *val = context.value_map.at(var.name).get();
 
-                if (auto *reg = dynamic_cast<const backend::codegen::register_storage*>(ptr)) {
-                    context.used_register[reg->reg] = true;
+                if (auto *reg_storage = dynamic_cast<const backend::codegen::register_storage*>(val)) {
+                    context.dropped_available.emplace_back(reg_storage->reg);
                 }
             }
 
             context.current_instruction = instruction.metadata.get();
             auto info = gen_instruction(context, instruction);
 
+            // Now that the instruction is done and the variable will no longer by referenced,
+            // fully drop the value -- i.e. remove it from the value map
             for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
                 if (!instruction.metadata->dropped_data[i]) continue;
+                if (!std::holds_alternative<ir::variable>(instruction.operands[i].val)) continue;
 
                 const auto &var = std::get<ir::variable>(instruction.operands[i].val);
 
@@ -121,14 +126,15 @@ backend::codegen::instruction_return backend::codegen::gen_instruction(backend::
     for (const auto& operand : instruction.operands) {
         if (std::holds_alternative<ir::int_literal>(operand.val)) {
             const auto &literal = std::get<ir::int_literal>(operand.val);
+            auto name = std::string("__intlit_").append(std::to_string(literal.value));
 
             context.value_map.emplace(
-                std::to_string(literal.value),
+                name,
                 std::make_unique<backend::codegen::literal>(literal.size, literal.value)
             );
 
             operands.emplace_back(
-                std::to_string(literal.value)
+                name
             );
         } else if (std::holds_alternative<ir::variable>(operand.val)) {
             const auto &variable = std::get<ir::variable>(operand.val);

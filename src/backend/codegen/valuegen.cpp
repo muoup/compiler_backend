@@ -40,30 +40,16 @@ backend::codegen::find_register(backend::codegen::function_context &context, ir:
 
             if (!reg_storage) continue;
 
-            context.used_register[reg_storage->reg] = true;
             return std::make_unique<backend::codegen::register_storage>(size, reg_storage->reg);
         }
-    }
-
-    // Check for dropped registers that are available
-    for (auto iter = context.dropped_available.begin(); iter != context.dropped_available.end(); iter++) {
-        auto reg = *iter;
-
-        if (context.used_register[reg]) continue;
-
-        context.dropped_available.erase(iter);
-        context.used_register[reg] = true;
-        return std::make_unique<backend::codegen::register_storage>(size, reg);
     }
 
     // Otherwise check to see if any registers can be taken temporarily
     // i = 1 as rax should not be tampered with
     for (size_t i = 1; i < register_count; i++) {
-        if (context.used_register[i]) continue;
+        if (context.register_mem[i] || context.register_parameter[i]) continue;
 
         context.register_tampered[i] = true;
-
-        context.used_register[i] = true;
         return std::make_unique<backend::codegen::register_storage>(size, (register_t) i);
     }
 

@@ -48,8 +48,10 @@ namespace backend::codegen {
         std::vector<register_t> dropped_available;
 
         bool dropped_reassignable = true;
-        bool used_register[register_count] {};
         bool register_tampered[register_count] {};
+        bool register_parameter[register_count] {};
+
+        const char* register_mem[register_count] {};
 
         size_t current_stack_size = 0;
 
@@ -58,9 +60,15 @@ namespace backend::codegen {
             this->current_label->nodes.emplace_back(std::make_unique<T>(std::move(constructor_args)...));
         }
 
-        void set_used(const vptr* value, bool used) {
+        void give_ownership(const vptr* value, const char* name) {
             if (auto *reg_storage = dynamic_cast<const register_storage*>(value)) {
-                used_register[reg_storage->reg] = used;
+                register_mem[reg_storage->reg] = name;
+            }
+        }
+
+        void remove_ownership(const vptr* value) {
+            if (auto *reg_storage = dynamic_cast<const register_storage*>(value)) {
+                register_mem[reg_storage->reg] = nullptr;
             }
         }
 
@@ -100,7 +108,7 @@ namespace backend::codegen {
         }
 
         void map_value(const char* name, virtual_pointer value) {
-            set_used(value.get(), true);
+            give_ownership(value.get(), name);
             value_map[std::string { name }] = std::move(value);
         }
 
@@ -112,14 +120,14 @@ namespace backend::codegen {
                 dropped_available.emplace_back(dynamic_cast<const register_storage*>(value.get())->reg);
             }
 
-            set_used(value_map.at(name).get(), false);
+            remove_ownership(value.get());
             dropped_at_map.emplace(name, std::move(value_map.at(name)));
             value_map.erase(name);
         }
 
         void remap_value(const char* name, virtual_pointer value) {
-            set_used(value_map[name].get(), false);
-            set_used(value.get(), true);
+            remove_ownership(value_map[name].get());
+            give_ownership(value.get(), name);
             value_map[name] = std::move(value);
         }
 

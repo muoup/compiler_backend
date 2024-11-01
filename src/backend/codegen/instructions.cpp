@@ -194,8 +194,8 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic(
 
     const auto rhs = context.get_value(virtual_operands[1]);
 
-    auto reg = backend::codegen::find_register(context, rhs->size);
-    backend::codegen::emit_move(context, reg.get(), virtual_operands[0]);
+    auto reg = backend::codegen::force_find_register(context, rhs->size);
+    backend::codegen::copy_to_register(context, virtual_operands[0], reg->reg);
 
     context.add_asm_node<as::inst::arithmetic>(
             arithmetic.type,
