@@ -183,4 +183,5 @@ namespace backend::as {
     };
 
     std::unique_ptr<backend::as::op::operand_t> create_operand(const codegen::vptr *vptr);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(ir::int_literal lit);
 }

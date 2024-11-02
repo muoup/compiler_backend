@@ -2,6 +2,7 @@
 
 #include <span>
 #include <unordered_map>
+#include <functional>
 
 #include "registers.hpp"
 #include "valuegen.hpp"
@@ -30,6 +31,53 @@ namespace backend::codegen {
     struct instruction_return;
     struct vptr;
 
+    struct value_reference {
+        std::variant<const vptr*, ir::int_literal> value;
+
+        explicit value_reference(const vptr* value) : value(value) {}
+        explicit value_reference(ir::int_literal literal) : value(literal) {}
+
+        [[nodiscard]] ir::value_size get_size() const {
+            return std::visit([](auto &&arg) -> ir::value_size {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, const vptr*>) {
+                    return arg->size;
+                } else {
+                    return arg.size;
+                }
+            }, value);
+        }
+
+        [[nodiscard]] auto gen_as_operand() const {
+            return std::visit([](auto &&arg) { return as::create_operand(arg); }, value);
+        }
+
+        void with_variable(const std::function<void(const vptr*)>& func) const {
+            auto *ptr = std::get_if<const vptr*>(&value);
+
+            if (ptr) {
+                func(*ptr);
+            }
+        }
+
+        [[nodiscard]] const vptr* get_variable() const {
+            const auto *ptr = std::get_if<const vptr*>(&value);
+
+            return ptr ? *ptr : nullptr;
+        }
+
+        [[nodiscard]] std::optional<ir::int_literal> get_literal() const {
+            const auto *ptr = std::get_if<ir::int_literal>(&value);
+
+            return ptr ? std::make_optional(*ptr) : std::nullopt;
+        }
+
+        template <typename T>
+        [[nodiscard]] const T* get_vptr_type() const {
+            return dynamic_cast<const T*>(get_variable());
+        }
+    };
+
     struct function_context {
         const ir::root& root;
         const ir::value_size return_type;
@@ -43,7 +91,7 @@ namespace backend::codegen {
         const backend::instruction_metadata *current_instruction;
 
         std::unordered_map<std::string, virtual_pointer> value_map;
-        std::unordered_map<std::string, virtual_pointer> dropped_at_map;
+        std::unordered_map<int64_t, virtual_pointer> literal_cache;
 
         std::vector<register_t> dropped_available;
 
@@ -66,67 +114,54 @@ namespace backend::codegen {
             }
         }
 
-        void remove_ownership(const vptr* value) {
+        void remove_ownership(const vptr* value, const char* name) {
             if (auto *reg_storage = dynamic_cast<const register_storage*>(value)) {
+                // Another variable has already taken ownership of this register
+                if (register_mem[reg_storage->reg] != name) return;
+
                 register_mem[reg_storage->reg] = nullptr;
             }
         }
 
         const vptr* get_value(const char* name) {
-            if (value_map.contains(name)) {
-                return value_map.at(name).get();
-            }
-
-            for (auto &str : root.global_strings) {
-                if (str.name == name) {
-                    value_map[name] = std::make_unique<global_pointer>(str.name);
-                    return value_map.at(name).get();
-                }
-            }
-
-            throw std::runtime_error("Value not found");
+            return value_map.at(name).get();
         }
 
-        const vptr* get_value(const ir::variable &var) {
-            auto ptr = get_value(var.name.c_str());
+        value_reference get_value(const ir::variable &var) {
+            auto ptr = value_map.at(var.name).get();
 
             debug::assert(ptr->size == var.size, "Variable size mismatch");
 
-            return ptr;
+            return value_reference { ptr };
         }
 
-        const vptr* get_value(const ir::int_literal &var) {
-            auto ptr = get_value(std::to_string(var.value).c_str());
-
-            debug::assert(ptr->size == var.size, "Variable size mismatch");
-
-            return ptr;
+        value_reference get_value(const ir::int_literal &var) {
+            return value_reference { var };
         }
 
-        const vptr* get_value(const ir::value &value) {
+        value_reference get_value(const ir::value &value) {
             return std::visit([&](auto &&arg) { return get_value(arg); }, value.val);
         }
 
-        void map_value(const char* name, virtual_pointer value) {
-            give_ownership(value.get(), name);
-            value_map[std::string { name }] = std::move(value);
+        void map_value(const ir::variable &var, virtual_pointer value) {
+            give_ownership(value.get(), var.name.c_str());
+            value_map[var.name] = std::move(value);
         }
 
-        void drop_value(const char* name) {
-            auto &value = value_map.at(name);
+        void drop_value(const ir::variable &var) {
+            auto value = get_value(var);
 
-            if (!value->droppable) return;
-            if (dynamic_cast<const register_storage*>(value.get())) {
-                dropped_available.emplace_back(dynamic_cast<const register_storage*>(value.get())->reg);
-            }
+            if (!value.get_variable()->droppable) return;
+//            if (const auto *reg = value.get_vptr_type<const register_storage>()) {
+//                dropped_available.emplace_back(reg->reg);
+//            }
 
-            remove_ownership(value.get());
-            dropped_at_map.emplace(name, std::move(value_map.at(name)));
-            value_map.erase(name);
+            remove_ownership(value.get_variable(), var.name.c_str());
+            value_map.erase(var.name);
         }
 
         void remap_value(const char* name, virtual_pointer value) {
-            remove_ownership(value_map[name].get());
+            remove_ownership(value_map[name].get(), name);
             give_ownership(value.get(), name);
             value_map[name] = std::move(value);
         }

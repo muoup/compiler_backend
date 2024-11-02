@@ -2,34 +2,26 @@
 #include "codegen.hpp"
 #include "inst_output.hpp"
 
-void backend::codegen::empty_value(backend::codegen::function_context &context, const char *value) {
-    auto &vmem = context.value_map.at(value);
-    auto new_memory = backend::codegen::find_val_storage(context, vmem->size);
-
-//    context.unmap_to_temp(value);
-    context.map_value(value, std::move(new_memory));
-    backend::codegen::emit_move(context, "temp", value);
-}
-
 void backend::codegen::copy_to_register(backend::codegen::function_context &context,
-                                        std::string_view value,
+                                        const ir::value &value,
                                         backend::codegen::register_t reg) {
     bool in_reg = [&]() {
-        auto *val_reg = dynamic_cast<backend::codegen::register_storage*>(context.get_value(value));
+        auto *val_reg = context.get_value(value).get_vptr_type<register_storage>();
         return val_reg && val_reg->reg == reg;
     }();
 
     backend::codegen::empty_register(context, reg);
 
     auto val = context.get_value(value);
-    auto new_memory = std::make_unique<backend::codegen::register_storage>(val->size, reg);
+    auto new_memory = std::make_unique<backend::codegen::register_storage>(val.get_size(), reg);
 
     if (!in_reg) {
         backend::codegen::emit_move(context, new_memory.get(), value);
     }
 }
 
-const backend::codegen::vptr* backend::codegen::empty_register(backend::codegen::function_context &context, backend::codegen::register_t reg) {
+const backend::codegen::vptr* backend::codegen::empty_register(backend::codegen::function_context &context,
+                                                               backend::codegen::register_t reg) {
     auto *reg_storage = context.register_mem[reg];
 
     if (!reg_storage)
@@ -38,7 +30,7 @@ const backend::codegen::vptr* backend::codegen::empty_register(backend::codegen:
     auto *old_mem = context.get_value(reg_storage);
     auto new_mem = backend::codegen::find_val_storage(context, old_mem->size);
 
-    backend::codegen::emit_move(context, new_mem.get(), reg_storage);
+    backend::codegen::emit_move(context, new_mem.get(), context.get_value(reg_storage));
     context.remap_value(reg_storage, std::move(new_mem));
     return context.value_map.at(reg_storage).get();
 }

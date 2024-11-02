@@ -45,7 +45,7 @@ namespace backend::as::op {
                 : operand_t(operand_types::stack_mem, size), rbp_off(rbp_off) {}
 
         [[nodiscard]] std::string get_address() const override {
-            return std::string("[rbp + ") + std::to_string(rbp_off) + "]";
+            return codegen::get_stack_prefix(size) + "[rbp + " + std::to_string(rbp_off) + "]";
         }
         [[nodiscard]] bool equals(const operand_t& other) override {
             if (other.type != operand_types::stack_mem)
@@ -266,11 +266,13 @@ std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const co
         return std::make_unique<op::reg>(reg->size, reg->reg);
     } else if (const auto *stack = dynamic_cast<const codegen::stack_value*>(vptr)) {
         return std::make_unique<op::stack_memory>(stack->size, stack->rsp_off);
-    } else if (const auto *imm = dynamic_cast<const codegen::literal*>(vptr)) {
-        return std::make_unique<op::imm>(imm->size, imm->value);
     } else if (const auto *global = dynamic_cast<const codegen::global_pointer*>(vptr)) {
         return std::make_unique<op::global_pointer>(global->name);
     }
 
     throw std::runtime_error("Invalid operand type");
+}
+
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(ir::int_literal lit) {
+    return std::make_unique<op::imm>(lit.size, lit.value);
 }

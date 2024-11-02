@@ -46,7 +46,7 @@ void backend::codegen::gen_function(const ir::root &root,
 
         auto reg_storage = std::make_unique<backend::codegen::register_storage>(size, reg);
 
-        context.map_value(function.parameters[i].name.c_str(), std::move(reg_storage));
+        context.map_value(function.parameters[i], std::move(reg_storage));
         context.register_parameter[reg] = true;
     }
 
@@ -69,7 +69,7 @@ void backend::codegen::gen_function(const ir::root &root,
                 }
 
                 if (context.dropped_reassignable)
-                    context.remove_ownership(val);
+                    context.remove_ownership(val, var.name.c_str());
             }
 
             context.current_instruction = instruction.metadata.get();
@@ -84,13 +84,13 @@ void backend::codegen::gen_function(const ir::root &root,
                 const auto &var = std::get<ir::variable>(instruction.operands[i].val);
 
                 context.drop_value(
-                var.name.c_str()
+                    var
                 );
             }
 
             if (info.return_dest && instruction.assigned_to) {
                 context.map_value(
-                    instruction.assigned_to->name.c_str(),
+                    *instruction.assigned_to,
                     std::move(info.return_dest)
                 );
             }
@@ -113,7 +113,7 @@ template <typename T>
 backend::codegen::instruction_return gen(auto fn,
                                          backend::codegen::function_context &context,
                                          const ir::block::block_instruction &instruction,
-                                         const std::vector<std::string> &operands) {
+                                         const backend::codegen::v_operands &operands) {
     context.dropped_reassignable = instruction.inst->dropped_reassignable();
 
     auto ret = fn(context, dynamic_cast<const T&>(*instruction.inst), operands);
@@ -124,59 +124,33 @@ backend::codegen::instruction_return gen(auto fn,
 }
 
 backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
-    std::vector<std::string> operands;
-
-    for (const auto& operand : instruction.operands) {
-        if (std::holds_alternative<ir::int_literal>(operand.val)) {
-            const auto &literal = std::get<ir::int_literal>(operand.val);
-            auto name = std::string("__intlit_").append(std::to_string(literal.value));
-
-            context.value_map.emplace(
-                name,
-                std::make_unique<backend::codegen::literal>(literal.size, literal.value)
-            );
-
-            operands.emplace_back(
-                name
-            );
-        } else if (std::holds_alternative<ir::variable>(operand.val)) {
-            const auto &variable = std::get<ir::variable>(operand.val);
-
-            debug::assert(context.value_map.contains(variable.name), "Variable not found in value map");
-
-            operands.emplace_back(
-                variable.name
-            );
-        }
-    }
-
     switch (instruction.inst->type) {
         using enum ir::block::node_type;
 
         case literal:
-            return gen<ir::block::literal>(gen_literal, context, instruction, operands);
+            return gen<ir::block::literal>(gen_literal, context, instruction, instruction.operands);
         case allocate:
-            return gen<ir::block::allocate>(gen_allocate, context, instruction, operands);
+            return gen<ir::block::allocate>(gen_allocate, context, instruction, instruction.operands);
         case store:
-            return gen<ir::block::store>(gen_store, context, instruction, operands);
+            return gen<ir::block::store>(gen_store, context, instruction, instruction.operands);
         case load:
-            return gen<ir::block::load>(gen_load, context, instruction, operands);
+            return gen<ir::block::load>(gen_load, context, instruction, instruction.operands);
         case icmp:
-            return gen<ir::block::icmp>(gen_icmp, context, instruction, operands);
+            return gen<ir::block::icmp>(gen_icmp, context, instruction, instruction.operands);
         case branch:
-            return gen<ir::block::branch>(gen_branch, context, instruction, operands);
+            return gen<ir::block::branch>(gen_branch, context, instruction, instruction.operands);
         case jmp:
-            return gen<ir::block::jmp>(gen_jmp, context, instruction, operands);
+            return gen<ir::block::jmp>(gen_jmp, context, instruction, instruction.operands);
         case ret:
-            return gen<ir::block::ret>(gen_return, context, instruction, operands);
+            return gen<ir::block::ret>(gen_return, context, instruction, instruction.operands);
         case arithmetic:
-            return gen<ir::block::arithmetic>(gen_arithmetic, context, instruction, operands);
+            return gen<ir::block::arithmetic>(gen_arithmetic, context, instruction, instruction.operands);
         case call:
-            return gen<ir::block::call>(gen_call, context, instruction, operands);
+            return gen<ir::block::call>(gen_call, context, instruction, instruction.operands);
         case phi:
-            return gen<ir::block::phi>(gen_phi, context, instruction, operands);
+            return gen<ir::block::phi>(gen_phi, context, instruction, instruction.operands);
         case select:
-            return gen<ir::block::select>(gen_select, context, instruction, operands);
+            return gen<ir::block::select>(gen_select, context, instruction, instruction.operands);
     }
 
     throw std::runtime_error("Unknown instruction");

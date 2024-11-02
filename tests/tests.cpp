@@ -52,7 +52,6 @@ void io_stack_test() {
 
 void hello_world_lex() {
     std::ifstream file { "../examples/fibonacci.ir" };
-//    std::ofstream ofile { "../examples/fibonacci.asm" };
 
     if (!file.is_open()) {
         std::cerr << "Failed to open file" << std::endl;

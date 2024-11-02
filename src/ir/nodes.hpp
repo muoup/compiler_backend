@@ -107,8 +107,14 @@ namespace ir {
             std::visit([&](auto&& arg) { arg.print(ostream); }, value.val);
             return ostream;
         }
+
         [[nodiscard]] value_size get_size() const {
             return std::visit([](auto&& arg) -> value_size { return arg.size; }, val);
+        }
+        [[nodiscard]] std::string_view get_name() const {
+            if (std::holds_alternative<variable>(val))
+                return std::get<variable>(val).name;
+            else throw std::runtime_error("value is not a variable");
         }
     };
 
