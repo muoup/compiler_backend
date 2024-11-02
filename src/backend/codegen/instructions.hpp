@@ -64,7 +64,9 @@ namespace backend::codegen {
             const ir::block::arithmetic &arithmetic,
             const v_operands &virtual_operands
     );
-    instruction_return gen_call(
+    instruction_return
+
+    gen_call(
             backend::codegen::function_context &context,
             const ir::block::call &call,
             const v_operands &virtual_operands

@@ -14,11 +14,17 @@ void backend::codegen::empty_value(backend::codegen::function_context &context, 
 void backend::codegen::copy_to_register(backend::codegen::function_context &context,
                                         std::string_view value,
                                         backend::codegen::register_t reg) {
+    bool in_reg = [&]() {
+        auto *val_reg = dynamic_cast<backend::codegen::register_storage*>(context.get_value(value));
+        return val_reg && val_reg->reg == reg;
+    }();
+
+    backend::codegen::empty_register(context, reg);
+
     auto val = context.get_value(value);
     auto new_memory = std::make_unique<backend::codegen::register_storage>(val->size, reg);
 
-    if (auto *val_reg = dynamic_cast<backend::codegen::register_storage*>(val); val_reg && val_reg->reg != reg) {
-        backend::codegen::empty_register(context, reg);
+    if (!in_reg) {
         backend::codegen::emit_move(context, new_memory.get(), value);
     }
 }
