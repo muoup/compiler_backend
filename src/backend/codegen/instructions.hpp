@@ -84,6 +84,16 @@ namespace backend::codegen {
             const ir::block::select &select,
             const backend::codegen::v_operands &operands
     );
+    instruction_return gen_zext(
+            backend::codegen::function_context &context,
+            const ir::block::zext &zext,
+            const v_operands &operands
+    );
+    instruction_return gen_sext(
+            backend::codegen::function_context &context,
+            const ir::block::sext &sext,
+            const v_operands &operands
+    );
 
     const char* jmp_inst(ir::block::icmp_type type);
     const char* arithmetic_command(ir::block::arithmetic_type type);

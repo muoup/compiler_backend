@@ -40,6 +40,9 @@ void ir::output::emit_function(std::ostream &ostream, const ir::global::function
     ostream << "\n";
 
     for (const auto &block : function.blocks) {
+        if (block.instructions.empty())
+            continue;
+
         ostream << "." << block.name << ":\n";
 
         for (const auto &inst : block.instructions) {

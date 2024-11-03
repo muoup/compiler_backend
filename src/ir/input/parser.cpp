@@ -47,7 +47,6 @@ ir::global::extern_function parser::parse_extern_function(ir::parser::lex_iter_t
     debug::assert((start++)->value == "fn", "Expected fn");
 
     // TODO: Function return type static analysis
-    [[maybe_unused]]
     auto return_type = parse_value_size(start, end);
 
     debug::assert(start->type == lexer::token_type::identifier, "Expected identifier");
@@ -57,7 +56,7 @@ ir::global::extern_function parser::parse_extern_function(ir::parser::lex_iter_t
 
     debug::assert(start++->type == lexer::token_type::break_line, "Expected Break Line");
 
-    return ir::global::extern_function { std::move(name), std::move(parameters) };
+    return ir::global::extern_function { std::move(name), std::move(parameters), return_type };
 }
 
 ir::global::function parser::parse_function(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
@@ -94,7 +93,8 @@ ir::global::function parser::parse_function(ir::parser::lex_iter_t &start, ir::p
     return ir::global::function {
         std::move(function_prototype.name),
         std::move(function_prototype.parameters),
-        std::move(blocks)
+        std::move(blocks),
+        function_prototype.return_type
     };
 }
 

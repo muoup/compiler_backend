@@ -79,7 +79,6 @@ namespace backend::codegen {
     };
 
     struct function_context {
-        const ir::root& root;
         const ir::value_size return_type;
 
         std::ostream& ostream;
@@ -87,7 +86,6 @@ namespace backend::codegen {
 
         backend::as::label *current_label;
 
-        const ir::global::function &current_function;
         const backend::instruction_metadata *current_instruction;
 
         std::unordered_map<std::string, virtual_pointer> value_map;
@@ -97,7 +95,7 @@ namespace backend::codegen {
 
         bool dropped_reassignable = true;
         bool register_tampered[register_count] {};
-        bool register_parameter[register_count] {};
+        bool register_is_param[register_count] {};
 
         const char* register_mem[register_count] {};
 
@@ -152,9 +150,6 @@ namespace backend::codegen {
             auto value = get_value(var);
 
             if (!value.get_variable()->droppable) return;
-//            if (const auto *reg = value.get_vptr_type<const register_storage>()) {
-//                dropped_available.emplace_back(reg->reg);
-//            }
 
             remove_ownership(value.get_variable(), var.name.c_str());
             value_map.erase(var.name);

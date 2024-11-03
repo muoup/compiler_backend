@@ -126,7 +126,11 @@ namespace ir {
         }
 
         enum class node_type {
-            literal, allocate, store, load, branch, jmp, icmp, call, ret, arithmetic, phi, select
+            literal, allocate, store, load,
+            branch, jmp, icmp,
+            call, ret,
+            arithmetic, phi, select,
+            sext, zext
         };
 
         /**
@@ -444,6 +448,26 @@ namespace ir {
 
             PRINT_DEF("select");
         };
+
+        struct sext : instruction {
+            value_size new_size;
+
+            explicit sext(value_size new_size) : instruction(node_type::sext), new_size(new_size) {}
+            ~sext() override = default;
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return new_size; }
+            PRINT_DEF("sext", ir::value_size_str(new_size));
+        };
+
+        struct zext : instruction {
+            value_size new_size;
+
+            explicit zext(value_size new_size) : instruction(node_type::zext), new_size(new_size) {}
+            ~zext() override = default;
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return new_size; }
+            PRINT_DEF("zext", ir::value_size_str(new_size));
+        };
     }
 
     namespace global {
@@ -453,7 +477,8 @@ namespace ir {
             std::string name;
             std::string value;
 
-            explicit global_string(std::string name, std::string value)
+            explicit global_string(std::string name,
+                                   std::string value)
                 :   name(std::move(name)),
                     value(std::move(value)) {}
         };
@@ -461,25 +486,32 @@ namespace ir {
         struct extern_function : global_node {
             std::string name;
             std::vector<variable> parameters;
+            value_size return_type;
 
-            explicit extern_function(std::string name, std::vector<variable> parameters)
-                :   name(std::move(name)),
-                    parameters(std::move(parameters)) {}
+            explicit extern_function(std::string name,
+                                     std::vector<variable> parameters,
+                                     value_size return_type)
+                : name(std::move(name)),
+                  parameters(std::move(parameters)),
+                  return_type(return_type) {}
         };
 
         struct function : global_node {
             std::string name;
             std::vector<variable> parameters;
             std::vector<block::block> blocks;
+            value_size return_type;
 
-            std::unique_ptr<backend::function_metadata> metadata { nullptr };
+            std::unique_ptr<backend::function_metadata> metadata = nullptr;
 
             explicit function(std::string name,
                               std::vector<variable> parameters,
-                              std::vector<block::block> blocks)
+                              std::vector<block::block> blocks,
+                              value_size return_type)
                 :   name(std::move(name)),
                     parameters(std::move(parameters)),
-                    blocks(std::move(blocks)) {}
+                    blocks(std::move(blocks)),
+                    return_type(return_type) {}
         };
     }
 

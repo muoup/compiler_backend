@@ -17,7 +17,7 @@ extern fn [name]({(param_type %|%ptr )param_name}...){ -> return_type}:
     A label for branching instructions to jump to.
 
 %ptr [ptr] = allocate [size]:
-    Ensures there is space in stack memory for data of the given size.
+    Ensures there is space in stack memory for data of the given return_type.
 
 store [size] %[value_var], %ptr [ptr]:
     Stores a value_var in stack memory at the given ptr_var.
@@ -31,11 +31,17 @@ store [size] %[value_var], %ptr [ptr]:
 if %[condition] goto [true_label] else [false_label]:
     Branches to one of two labels based on the result of a comparison.
 
-%[value_var] = add [size] %[value1], %[value2]:
+%[value_var] = add [value_size] %[value1], %[value2]:
     Adds two values together.
 
-%[value_var] = sub [size] %[value1], %[value2]:
+%[value_var] = sub [value_size] %[value1], %[value2]:
     Subtracts one value_var from another.
+
+%[value_var] = zext [value_size] %[value_var]:
+    Zero extends a value_var to a larger or smaller size.
+
+%[value_var] = sext [value_size] %[value_var]:
+    Sign extends a value_var to a larger or smaller size.
 
 return %[value_var]:
     Returns a value_var from a function.

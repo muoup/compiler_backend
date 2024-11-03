@@ -30,10 +30,8 @@ void backend::codegen::gen_function(const ir::root &root,
     ostream << function.name << ':' << '\n';
 
     backend::codegen::function_context context {
-        .root = root,
-        .return_type = ir::value_size::i32,
+        .return_type = function.return_type,
         .ostream = ostream,
-        .current_function = function,
     };
 
     context.asm_blocks.emplace_back("__stacksave");
@@ -47,7 +45,7 @@ void backend::codegen::gen_function(const ir::root &root,
         auto reg_storage = std::make_unique<backend::codegen::register_storage>(size, reg);
 
         context.map_value(function.parameters[i], std::move(reg_storage));
-        context.register_parameter[reg] = true;
+        context.register_is_param[reg] = true;
     }
 
     for (const auto &block : function.blocks) {
@@ -151,6 +149,10 @@ backend::codegen::instruction_return backend::codegen::gen_instruction(backend::
             return gen<ir::block::phi>(gen_phi, context, instruction, instruction.operands);
         case select:
             return gen<ir::block::select>(gen_select, context, instruction, instruction.operands);
+        case zext:
+            return gen<ir::block::zext>(gen_zext, context, instruction, instruction.operands);
+        case sext:
+            return gen<ir::block::sext>(gen_sext, context, instruction, instruction.operands);
     }
 
     throw std::runtime_error("Unknown instruction");

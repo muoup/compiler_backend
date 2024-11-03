@@ -23,31 +23,20 @@ backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::code
 
 std::unique_ptr<backend::codegen::register_storage>
 backend::codegen::find_register(backend::codegen::function_context &context, ir::value_size size) {
-    // First check if any registers are being dropped
-    const auto& dropped_data = context.current_instruction->dropped_data;
-
+    // First check if any registers are being dropped, the most recent dropped registers are going
+    // to be the operands dropped in the current instruction, so a separate routine for defaulting to
+    // those is not needed.
     if (context.dropped_reassignable) {
-        for (size_t i = 0; i < dropped_data.size(); i++) {
-            if (!dropped_data[i]) continue;
+        auto reassign = context.dropped_available.back();
+        context.dropped_available.pop_back();
 
-            const auto& operand = context.current_instruction->instruction.operands[i];
-
-            if (!std::holds_alternative<ir::variable>(operand.val)) continue;
-
-            const auto &variable = std::get<ir::variable>(operand.val);
-            auto &mapped_val = context.value_map.at(variable.name);
-            auto *reg_storage = dynamic_cast<backend::codegen::register_storage*>(mapped_val.get());
-
-            if (!reg_storage) continue;
-
-            return std::make_unique<backend::codegen::register_storage>(size, reg_storage->reg);
-        }
+        return std::make_unique<backend::codegen::register_storage>(size, reassign);
     }
 
     // Otherwise check to see if any registers can be taken temporarily
     // i = 1 as rax should not be tampered with
     for (size_t i = 1; i < register_count; i++) {
-        if (context.register_mem[i] || context.register_parameter[i]) continue;
+        if (context.register_mem[i] || context.register_is_param[i]) continue;
 
         context.register_tampered[i] = true;
         return std::make_unique<backend::codegen::register_storage>(size, (register_t) i);

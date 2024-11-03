@@ -88,7 +88,7 @@ namespace backend::as::inst {
 
     void stack_save::print(backend::codegen::function_context &context) const {
         for (size_t i = 0; i < backend::codegen::register_count; i++) {
-            if (!context.register_tampered[i]) continue;
+            if (!context.register_tampered[i] || context.register_is_param[i]) continue;
 
             print_inst(context.ostream, "push");
             context.ostream << backend::codegen::register_as_string((backend::codegen::register_t) i, ir::value_size::i64) << '\n';
@@ -183,6 +183,10 @@ namespace backend::as::inst {
         print_inst(context.ostream, cmove_inst(type), src, dest);
     }
 
+    void movsxd::print(backend::codegen::function_context &context) const {
+        print_inst(context.ostream, "movsxd", src, dest);
+    }
+
     static const char* set_inst(ir::block::icmp_type type) {
         switch (type) {
             using enum ir::block::icmp_type;
@@ -246,10 +250,10 @@ namespace backend::as::inst {
 
     void ret::print(backend::codegen::function_context &context) const {
         for (size_t i = backend::codegen::register_count - 1; i >= 1; i--) {
-            if (!context.register_tampered[i]) continue;
+            if (!context.register_tampered[i] || context.register_is_param[i]) continue;
 
             print_inst(context.ostream, "pop");
-            context.ostream << backend::codegen::param_register_string(i, ir::value_size::i64) << '\n';
+            context.ostream << backend::codegen::register_as_string((backend::codegen::register_t) i, ir::value_size::i64) << '\n';
         }
 
         if (context.current_stack_size != 0) {
@@ -261,11 +265,11 @@ namespace backend::as::inst {
     }
 }
 
-std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr) {
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr, ir::value_size size) {
     if (const auto *reg = dynamic_cast<const codegen::register_storage*>(vptr)) {
-        return std::make_unique<op::reg>(reg->size, reg->reg);
+        return std::make_unique<op::reg>(size, reg->reg);
     } else if (const auto *stack = dynamic_cast<const codegen::stack_value*>(vptr)) {
-        return std::make_unique<op::stack_memory>(stack->size, stack->rsp_off);
+        return std::make_unique<op::stack_memory>(size, stack->rsp_off);
     } else if (const auto *global = dynamic_cast<const codegen::global_pointer*>(vptr)) {
         return std::make_unique<op::global_pointer>(global->name);
     }
@@ -273,6 +277,14 @@ std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const co
     throw std::runtime_error("Invalid operand type");
 }
 
-std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(ir::int_literal lit) {
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(ir::int_literal lit, ir::value_size size) {
     return std::make_unique<op::imm>(lit.size, lit.value);
+}
+
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(ir::int_literal lit) {
+    return create_operand(lit, lit.size);
+}
+
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr) {
+    return create_operand(vptr, vptr->size);
 }

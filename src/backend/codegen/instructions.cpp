@@ -351,7 +351,7 @@ backend::codegen::instruction_return backend::codegen::gen_select(
     auto mem = backend::codegen::find_val_storage(context, select.get_return_size());
 
     context.add_asm_node<as::inst::mov>(
-            as::create_operand(mem.get()),
+        as::create_operand(mem.get()),
         as::create_operand(rhs)
     );
 
@@ -403,5 +403,62 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic_select(
 
     return {
         .return_dest = std::move(mem)
+    };
+}
+
+backend::codegen::instruction_return backend::codegen::gen_zext(
+        backend::codegen::function_context &context,
+        const ir::block::zext &zext,
+        const backend::codegen::v_operands &operands
+) {
+    debug::assert(operands.size() == 1, "Invalid Parameter Count for Zext");
+
+    if (const auto *literal = context.get_value(operands[0]).get_vptr_type<ir::int_literal>()) {
+        return {
+            .return_dest = std::make_unique<backend::codegen::literal>(zext.get_return_size(), literal->value)
+        };
+    }
+
+    auto new_mem = backend::codegen::force_find_register(context, zext.get_return_size());
+
+    if (operands[0].get_size() == ir::value_size::i1) {
+        context.add_asm_node<as::inst::set>(
+            context.get_value(operands[0]).get_vptr_type<codegen::icmp_result>()->flag,
+            as::create_operand(new_mem.get(), ir::value_size::i1)
+        );
+    } else {
+        context.add_asm_node<as::inst::mov>(
+            as::create_operand(new_mem.get(), operands[0].get_size()),
+            context.get_value(operands[0]).gen_as_operand()
+        );
+    }
+
+    return {
+        .return_dest = std::move(new_mem)
+    };
+}
+
+backend::codegen::instruction_return backend::codegen::gen_sext(
+    backend::codegen::function_context &context,
+    const ir::block::sext &sext,
+    const backend::codegen::v_operands &operands
+) {
+    debug::assert(operands.size() == 1, "Invalid Parameter Count for Sext");
+
+    auto new_mem = backend::codegen::find_val_storage(context, sext.get_return_size());
+
+    if (context.get_value(operands[0]).get_vptr_type<ir::int_literal>()) {
+        return {
+            .return_dest = std::make_unique<backend::codegen::literal>(sext.get_return_size(), context.get_value(operands[0]).get_literal()->value)
+        };
+    }
+
+    context.add_asm_node<as::inst::movsxd>(
+        as::create_operand(new_mem.get()),
+        context.get_value(operands[0]).gen_as_operand()
+    );
+
+    return {
+        .return_dest = std::move(new_mem)
     };
 }
