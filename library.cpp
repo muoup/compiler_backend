@@ -1,6 +1,6 @@
 #include "library.h"
 
-function_builder code_unit::create_function(
+cb::function_builder cb::code_unit::create_function(
     std::string name,
     ir::value_size return_type,
     std::vector<ir::variable> parameters
@@ -17,7 +17,7 @@ function_builder code_unit::create_function(
     };
 }
 
-void function_builder::create_block(const std::string &name) {
+void cb::function_builder::create_block(const std::string &name) {
     current_function->blocks.emplace_back(name);
     current_block = &current_function->blocks.back();
 }
