@@ -16,3 +16,4 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 add_library(compiler_backend STATIC ${SOURCES} library.cpp library.h)
+set_target_properties(compiler_backend PROPERTIES PUBLIC_HEADER "library.h")
