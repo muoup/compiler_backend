@@ -1,4 +1,4 @@
-#include "src/ir/nodes.hpp"
+#include "../src/ir/nodes.hpp"
 
 namespace cb {
     struct function_builder;
