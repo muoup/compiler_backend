@@ -17,3 +17,14 @@ endif()
 
 add_library(compiler_backend STATIC ${SOURCES} library.cpp library.h)
 set_target_properties(compiler_backend PROPERTIES PUBLIC_HEADER "library.h")
+target_include_directories(compiler_backend PUBLIC "src")
+configure_file(compile_commands.pc.in compile_commands.pc @ONLY)
+install(
+    TARGETS compiler_backend
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+install(
+    FILES ${CMAKE_BINARY_DIR}/compile_commands.pc
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig
+)
