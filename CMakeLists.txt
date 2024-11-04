@@ -18,7 +18,7 @@ endif()
 add_library(compiler_backend STATIC ${SOURCES} library.cpp library.h)
 set_target_properties(compiler_backend PROPERTIES PUBLIC_HEADER "library.h")
 target_include_directories(compiler_backend PUBLIC "src")
-configure_file(compile_commands.pc.in compile_commands.pc @ONLY)
+configure_file(compiler_backend.pc.in compiler_backend.pc @ONLY)
 install(
     TARGETS compiler_backend
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
