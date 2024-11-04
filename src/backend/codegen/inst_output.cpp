@@ -5,41 +5,56 @@
 #include "asmgen/asm_nodes.hpp"
 
 void backend::codegen::emit_move(function_context &context,
-                                 const std::string_view dest_name,
-                                 const std::string_view src_name) {
-    const auto *dest = context.get_value(dest_name);
+                                 const ir::value& dest,
+                                 const ir::value& src) {
+    auto ref = context.get_value(dest);
+    auto dest_vptr = ref.get_variable();
 
-    emit_move(context, dest, src_name);
+    debug::assert(dest_vptr, "Destination must be a variable");
+
+    emit_move(context, dest_vptr, src);
 }
 
 void backend::codegen::emit_move(function_context &context,
-                                 const vptr *dest,
-                                 const std::string_view src_name) {
-    const auto *src = context.get_value(src_name);
+                                 const vptr* dest_vptr,
+                                 const ir::value &src) {
+    const auto &src_ref = context.get_value(src);
 
-    debug::assert(dest->size == src->size, "Move sizes must match");
+    debug::assert(dest_vptr->size == src_ref.get_size(), "Move sizes must match");
 
-    const auto *dest_stack = dynamic_cast<const backend::codegen::stack_value*>(dest);
-    const auto *src_stack = dynamic_cast<const backend::codegen::stack_value*>(src);
+    const auto *src_vptr = src_ref.get_variable();
 
-    if (!dest_stack || !src_stack) {
+    const auto *src_reg = dynamic_cast<const register_storage*>(src_vptr);
+    const auto *dest_reg = dynamic_cast<const register_storage*>(dest_vptr);
+
+    if (src_reg || dest_reg) {
         context.add_asm_node<as::inst::mov>(
-            as::create_operand(dest),
-            as::create_operand(src)
+            as::create_operand(dest_vptr),
+            src_ref.gen_as_operand()
         );
+
         return;
     }
 
-    // If both are stack pointers, we need to find an intermediate register to move the value
-    auto reg = backend::codegen::force_find_register(context, dest->size);
+    // A move requires one operand to be a register, so if not we must employ a temporary register
+    auto reg = backend::codegen::force_find_register(context, dest_vptr->size);
 
     context.add_asm_node<as::inst::mov>(
         as::create_operand(reg.get()),
-        as::create_operand(src)
+        src_ref.gen_as_operand()
     );
 
     context.add_asm_node<as::inst::mov>(
-        as::create_operand(dest),
+        as::create_operand(dest_vptr),
         as::create_operand(reg.get())
+    );
+}
+
+void backend::codegen::emit_move(function_context &context,
+                                 const vptr* dest,
+                                 const vptr* src) {
+    context.add_asm_node<as::inst::mov>(
+            as::create_operand(dest),
+            as::create_operand(src)
     );
 }

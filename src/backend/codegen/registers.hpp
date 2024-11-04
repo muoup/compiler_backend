@@ -9,15 +9,14 @@
 namespace backend::codegen {
     struct function_context;
 
-    constexpr size_t register_count = 17;
-
     enum register_t : uint8_t {
         rax, rbx, rcx, rdx,
         rsi, rdi,
-        rbp, rsp,
         r8, r9, r10, r11, r12,
         r13, r14, r15, r16
     };
+
+    constexpr size_t register_count = register_t::r16 + 1;
 
     enum register_size : uint8_t {
         byte,

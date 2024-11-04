@@ -10,8 +10,6 @@ const char* codegen::register_name[register_count][4] = {
         { "dl", "dx", "edx", "rdx" },
         { "sil", "si", "esi", "rsi" },
         { "dil", "di", "edi", "rdi" },
-        { "bpl", "bp", "ebp", "rbp" },
-        { "spl", "sp", "esp", "rsp" },
         { "r8b", "r8w", "r8d", "r8" },
         { "r9b", "r9w", "r9d", "r9" },
         { "r10b", "r10w", "r10d", "r10" },

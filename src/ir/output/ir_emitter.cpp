@@ -32,7 +32,7 @@ void ir::output::emit_external_function(std::ostream &ostream, const ir::global:
 
 void ir::output::emit_function(std::ostream &ostream, const ir::global::function &function) {
     ostream
-        << "define fn void "
+        << "define fn " << value_size_str(function.return_type) << " "
         << function.name;
 
     emit_parameters(ostream, function.parameters);
@@ -40,6 +40,9 @@ void ir::output::emit_function(std::ostream &ostream, const ir::global::function
     ostream << "\n";
 
     for (const auto &block : function.blocks) {
+        if (block.instructions.empty())
+            continue;
+
         ostream << "." << block.name << ":\n";
 
         for (const auto &inst : block.instructions) {

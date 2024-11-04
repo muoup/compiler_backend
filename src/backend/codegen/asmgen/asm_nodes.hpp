@@ -97,6 +97,17 @@ namespace backend::as {
             void print(backend::codegen::function_context &context) const override;
         };
 
+        struct movsx : asm_node {
+            operand src, dest;
+
+            movsx(operand src, operand dest)
+                    : src(std::move(src)), dest(std::move(dest)) {}
+
+            ~movsx() override = default;
+
+            void print(backend::codegen::function_context &context) const override;
+        };
+
         struct set : asm_node {
             ir::block::icmp_type type;
             operand op;
@@ -182,5 +193,9 @@ namespace backend::as {
         std::vector<std::unique_ptr<inst::asm_node>> nodes;
     };
 
+    std::unique_ptr<backend::as::op::operand_t> create_operand(const codegen::vptr *vptr, ir::value_size size);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(ir::int_literal lit, ir::value_size size);
+
     std::unique_ptr<backend::as::op::operand_t> create_operand(const codegen::vptr *vptr);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(ir::int_literal lit);
 }

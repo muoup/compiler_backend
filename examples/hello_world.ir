@@ -1,8 +1,8 @@
 global_string %msg = "Hello, World!"
 
-extern fn void puts(ptr %msg)
+extern fn i32 puts(ptr %msg)
 
 define fn void main()
-    call puts ptr %msg
+    call i32 puts ptr %msg
     ret
 end
