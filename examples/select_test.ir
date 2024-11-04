@@ -3,7 +3,7 @@ extern fn void putchar(i32)
 define fn i32 main()
     %1 = call arith_select 0, 1, 2
     %2 = add %1, 48
-    call putchar %2
+    call i32 putchar %2
     ret 0
 end
 

@@ -52,6 +52,7 @@ void io_stack_test() {
 
 void hello_world_lex() {
     std::ifstream file { "../examples/cast_test.ir" };
+    std::ofstream ofile { "../examples/cast_test.asm" };
 
     if (!file.is_open()) {
         std::cerr << "Failed to open file" << std::endl;
@@ -69,13 +70,13 @@ void hello_world_lex() {
 
     file.close();
 //    ofile.close();
-
-//    exec::execute("../examples/select_test.asm");
+//
+//    exec::execute("../examples/cast_test.asm");
 
     asm("nop");
 }
 
 int main() {
-//    io_stack_test();
+    io_stack_test();
     hello_world_lex();
 }

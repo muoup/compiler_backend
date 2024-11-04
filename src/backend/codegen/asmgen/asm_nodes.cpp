@@ -183,8 +183,8 @@ namespace backend::as::inst {
         print_inst(context.ostream, cmove_inst(type), src, dest);
     }
 
-    void movsxd::print(backend::codegen::function_context &context) const {
-        print_inst(context.ostream, "movsxd", src, dest);
+    void movsx::print(backend::codegen::function_context &context) const {
+        print_inst(context.ostream, "movsx", src, dest);
     }
 
     static const char* set_inst(ir::block::icmp_type type) {

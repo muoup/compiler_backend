@@ -97,13 +97,13 @@ namespace backend::as {
             void print(backend::codegen::function_context &context) const override;
         };
 
-        struct movsxd : asm_node {
+        struct movsx : asm_node {
             operand src, dest;
 
-            movsxd(operand src, operand dest)
+            movsx(operand src, operand dest)
                     : src(std::move(src)), dest(std::move(dest)) {}
 
-            ~movsxd() override = default;
+            ~movsx() override = default;
 
             void print(backend::codegen::function_context &context) const override;
         };

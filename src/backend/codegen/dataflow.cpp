@@ -5,19 +5,15 @@
 void backend::codegen::copy_to_register(backend::codegen::function_context &context,
                                         const ir::value &value,
                                         backend::codegen::register_t reg) {
-    bool in_reg = [&]() {
-        auto *val_reg = context.get_value(value).get_vptr_type<register_storage>();
-        return val_reg && val_reg->reg == reg;
-    }();
+    auto *val_reg = context.get_value(value).get_vptr_type<register_storage>();
 
-    backend::codegen::empty_register(context, reg);
+    if (val_reg == nullptr || val_reg->reg != reg || !context.current_instruction->dropped_data[0])
+        backend::codegen::empty_register(context, reg);
 
     auto val = context.get_value(value);
     auto new_memory = std::make_unique<backend::codegen::register_storage>(val.get_size(), reg);
 
-    if (!in_reg) {
-        backend::codegen::emit_move(context, new_memory.get(), value);
-    }
+    backend::codegen::emit_move(context, new_memory.get(), value);
 }
 
 const backend::codegen::vptr* backend::codegen::empty_register(backend::codegen::function_context &context,

@@ -212,14 +212,13 @@ backend::codegen::instruction_return backend::codegen::gen_call(
         const ir::block::call &call,
         const v_operands &operands
 ) {
-    backend::codegen::empty_register(context, backend::codegen::register_t::rax);
-
     for (size_t i = 0; i < operands.size(); i++) {
         const auto param_reg_id = backend::codegen::param_register((uint8_t) i);
 
         copy_to_register(context, operands[i], param_reg_id);
     }
 
+    backend::codegen::empty_register(context, backend::codegen::register_t::rax);
     context.add_asm_node<as::inst::call>(call.name);
 
     return {
@@ -453,10 +452,12 @@ backend::codegen::instruction_return backend::codegen::gen_sext(
         };
     }
 
-    context.add_asm_node<as::inst::movsxd>(
-        as::create_operand(new_mem.get()),
-        context.get_value(operands[0]).gen_as_operand()
-    );
+    if (sext.get_return_size() > operands[0].get_size()) {
+        context.add_asm_node<as::inst::movsx>(
+            as::create_operand(new_mem.get()),
+            context.get_value(operands[0]).gen_as_operand()
+        );
+    }
 
     return {
         .return_dest = std::move(new_mem)

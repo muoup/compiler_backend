@@ -28,6 +28,7 @@ namespace ir {
 
     inline const char* value_size_str(value_size size) {
         switch (size) {
+            case value_size::none: return "void";
             case value_size::i1: return "i1";
             case value_size::i8: return "i8";
             case value_size::i16: return "i16";
@@ -70,7 +71,7 @@ namespace ir {
 
         explicit int_literal(value_size size, uint64_t value) : size(size), value(value) {}
         void print(std::ostream &ostream) const {
-            ostream << (unsigned int) value;
+            ostream << value_size_str(size) << " " << (unsigned int) value;
         }
     };
 
@@ -88,7 +89,10 @@ namespace ir {
             :   size(size), name(std::move(name)) {}
 
         void print(std::ostream &ostream) const {
-            ostream << value_size_str(size) << " %" << name;
+            if (size != value_size::param_dependent && size != value_size::none)
+                ostream << value_size_str(size) << " ";
+
+            ostream << "%" << name;
         }
     };
 
@@ -119,10 +123,20 @@ namespace ir {
     };
 
     namespace block {
+        template <typename T>
+        inline void __val_print(std::ostream& ostream, const T& arg) {
+            ostream << " " << arg;
+        }
+
+        template <>
+        inline void __val_print<value_size>(std::ostream& ostream, const value_size& arg) {
+            ostream << " " << value_size_str(arg);
+        }
+
         template <typename... args>
         inline void __inst_print(std::ostream& ostream, const char* node_name, args... arg) {
             ostream << node_name;
-            ((ostream << " " << arg), ...);
+            (__val_print(ostream, arg), ...);
         }
 
         enum class node_type {
@@ -362,17 +376,18 @@ namespace ir {
          *  stack memory location so that the subroutine can unconditionally reference the parameters it requires.
          */
         struct call : instruction {
+            value_size return_size;
             std::string name;
 
-            explicit call(std::string name)
-                :   instruction(node_type::call), name(std::move(name)) {}
+            explicit call(std::string name, value_size return_size)
+                :   instruction(node_type::call), return_size(return_size), name(std::move(name)) {}
 
             [[nodiscard]] bool dropped_reassignable() const override { return false; }
 
-            PRINT_DEF("call", name);
+            PRINT_DEF("call", return_size, name);
             ~call() override = default;
 
-            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::i32; }
+            [[nodiscard]] ir::value_size get_return_size() const override { return return_size; }
         };
 
         /**

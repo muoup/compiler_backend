@@ -78,7 +78,7 @@ ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_it
     else if (instruction == "ret")
         return generate_instruction<ir::block::ret>(start, end);
     else if (instruction == "call")
-        return generate_instruction<ir::block::call, std::string>(start, end);
+        return generate_instruction<ir::block::call, std::string, value_size>(start, end);
     else if (instruction == "phi")
         return generate_instruction<ir::block::phi, std::string, std::string>(start, end);
     else if (instruction == "select")
@@ -134,6 +134,7 @@ value_size parser::parse_value_size(ir::parser::lex_iter_t &start, ir::parser::l
     }
 
     std::cout << "WARNING: No value size specified, this will not be supported in the future!" << '\n';
+    std::cout << "Found " << start->value << '\n';
     std::cout << "Defaulting to i32" << '\n';
 
     return value_size::i32;
