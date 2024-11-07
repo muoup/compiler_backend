@@ -5,7 +5,7 @@ namespace backend::as::op {
     struct reg : backend::as::op::operand_t {
         backend::codegen::register_t index;
 
-        explicit reg(backend::codegen::register_t index, uint8_t size)
+        explicit reg(ir::value_size size, backend::codegen::register_t index)
                 : operand_t(operand_types::reg, size), index(index) {}
         ~reg() override = default;
 
@@ -23,7 +23,7 @@ namespace backend::as::op {
     struct imm : backend::as::op::operand_t {
         uint64_t val;
 
-        explicit imm(uint64_t val, uint8_t size)
+        explicit imm(ir::value_size size, uint64_t val)
                 : operand_t(operand_types::literal, size), val(val) {}
         ~imm() override = default;
 
@@ -41,11 +41,11 @@ namespace backend::as::op {
     struct stack_memory : operand_t {
         size_t rbp_off;
 
-        explicit stack_memory(size_t rbp_off, uint8_t size)
+        explicit stack_memory(ir::value_size size, size_t rbp_off)
                 : operand_t(operand_types::stack_mem, size), rbp_off(rbp_off) {}
 
         [[nodiscard]] std::string get_address() const override {
-            return std::string("[rbp + ") + std::to_string(rbp_off) + "]";
+            return codegen::get_stack_prefix(size) + "[rbp + " + std::to_string(rbp_off) + "]";
         }
         [[nodiscard]] bool equals(const operand_t& other) override {
             if (other.type != operand_types::stack_mem)
@@ -59,7 +59,7 @@ namespace backend::as::op {
         std::string name;
 
         explicit global_pointer(std::string name)
-                : operand_t(operand_types::global_ptr, 8), name(std::move(name)) {}
+                : operand_t(operand_types::global_ptr, ir::value_size::ptr), name(std::move(name)) {}
 
         [[nodiscard]] std::string get_address() const override {
             return name;
@@ -140,10 +140,10 @@ namespace backend::as::inst {
 
     void stack_save::print(backend::codegen::function_context &context) const {
         for (size_t i = 0; i < backend::codegen::register_count; i++) {
-            if (!context.register_tampered[i]) continue;
+            if (!context.register_tampered[i] || context.register_is_param[i]) continue;
 
             print_inst(context.ostream, "push");
-            context.ostream << backend::codegen::register_as_string((backend::codegen::register_t) i, 8) << '\n';
+            context.ostream << backend::codegen::register_as_string((backend::codegen::register_t) i, ir::value_size::i64) << '\n';
         }
 
         if (context.current_stack_size == 0)
@@ -170,7 +170,7 @@ namespace backend::as::inst {
 
         if (reg1.has_value()) {
             context.ostream
-                << backend::codegen::register_as_string((codegen::register_t) reg1.value(), 8)
+                << backend::codegen::register_as_string(reg1->reg, reg1->size)
                 << " + ";
         }
 
@@ -181,7 +181,7 @@ namespace backend::as::inst {
             }
 
             context.ostream
-                    << backend::codegen::register_as_string((codegen::register_t) reg2.value(), 8);
+                    << backend::codegen::register_as_string(reg2->reg, reg2->size);
         }
 
         if (offset.has_value()) {
@@ -201,6 +201,10 @@ namespace backend::as::inst {
 
     void cmov::print(backend::codegen::function_context &context) const {
         print_inst(context.ostream, cond_inst("cmov", type).c_str(), src, dest);
+    }
+
+    void movsx::print(backend::codegen::function_context &context) const {
+        print_inst(context.ostream, "movsx", src, dest);
     }
 
     void set::print(backend::codegen::function_context &context) const {
@@ -234,10 +238,10 @@ namespace backend::as::inst {
 
     void ret::print(backend::codegen::function_context &context) const {
         for (size_t i = backend::codegen::register_count - 1; i >= 1; i--) {
-            if (!context.register_tampered[i]) continue;
+            if (!context.register_tampered[i] || context.register_is_param[i]) continue;
 
             print_inst(context.ostream, "pop");
-            context.ostream << backend::codegen::register_as_string((backend::codegen::register_t) i, 8) << '\n';
+            context.ostream << backend::codegen::register_as_string((backend::codegen::register_t) i, ir::value_size::i64) << '\n';
         }
 
         if (context.current_stack_size != 0) {
@@ -249,16 +253,26 @@ namespace backend::as::inst {
     }
 }
 
-std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr, size_t size) {
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr, ir::value_size size) {
     if (const auto *reg = dynamic_cast<const codegen::register_storage*>(vptr)) {
-        return std::make_unique<op::reg>(reg->reg, size);
-    } else if (const auto *stack = dynamic_cast<const codegen::stack_pointer*>(vptr)) {
-        return std::make_unique<op::stack_memory>(stack->rsp_off, stack->alloc_size);
-    } else if (const auto *imm = dynamic_cast<const codegen::literal*>(vptr)) {
-        return std::make_unique<op::imm>(imm->value, size);
+        return std::make_unique<op::reg>(size, reg->reg);
+    } else if (const auto *stack = dynamic_cast<const codegen::stack_value*>(vptr)) {
+        return std::make_unique<op::stack_memory>(size, stack->rsp_off);
     } else if (const auto *global = dynamic_cast<const codegen::global_pointer*>(vptr)) {
         return std::make_unique<op::global_pointer>(global->name);
     }
 
     throw std::runtime_error("Invalid operand type");
+}
+
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(ir::int_literal lit, ir::value_size size) {
+    return std::make_unique<op::imm>(lit.size, lit.value);
+}
+
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(ir::int_literal lit) {
+    return create_operand(lit, lit.size);
+}
+
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr) {
+    return create_operand(vptr, vptr->size);
 }

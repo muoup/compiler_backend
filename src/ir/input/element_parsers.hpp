@@ -27,4 +27,9 @@ namespace ir::parser {
         return start++->value;
     }
 
+    template <>
+    inline auto parse_argument<ir::value_size>(parser::lex_iter_t &start, parser::lex_iter_t end) {
+        return parse_value_size(start, end);
+    }
+
 }

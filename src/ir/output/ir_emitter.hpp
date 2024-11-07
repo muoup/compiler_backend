@@ -3,6 +3,7 @@
 #include <ostream>
 #include <vector>
 #include <cstdint>
+#include "../nodes.hpp"
 
 #include "../../ir/node_prototypes.hpp"
 
@@ -18,8 +19,5 @@ namespace ir::output {
     void emit_external_function(std::ostream &ostream, const ir::global::extern_function &extern_function);
     void emit_global_string(std::ostream &ostream, const ir::global::global_string &global_string);
 
-    void emit_parameters(std::ostream &ostream, const std::vector<ir::global::parameter> &parameters);
-    void emit_parameter(std::ostream &ostream, const ir::global::parameter& parameters);
-
-    void emit_param_type(std::ostream &ostream, ir::global::parameter_type type);
+    void emit_parameters(std::ostream &ostream, const std::vector<ir::variable> &params);
 }

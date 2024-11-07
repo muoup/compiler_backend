@@ -43,48 +43,20 @@ ir::global::global_string parser::parse_global_string(ir::parser::lex_iter_t &st
     return ir::global::global_string {name, start++->value };
 }
 
-ir::global::extern_function parser::parse_extern_function(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t) {
+ir::global::extern_function parser::parse_extern_function(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     debug::assert((start++)->value == "fn", "Expected fn");
+
+    // TODO: Function return type static analysis
+    auto return_type = parse_value_size(start, end);
+
     debug::assert(start->type == lexer::token_type::identifier, "Expected identifier");
 
-    auto return_type = start->value;
+    auto name = start++->value;
+    auto parameters = parse_parameters(start, end);
 
-    debug::assert((++start)->type == lexer::token_type::identifier, "Expected identifier");
+    debug::assert(start++->type == lexer::token_type::break_line, "Expected Break Line");
 
-    auto name = start->value;
-
-    debug::assert((++start)->value == "(", "Expected (");
-
-    std::vector<ir::global::parameter> parameters {};
-
-    if ((++start)->value != ")") {
-        do {
-            using enum ir::global::parameter_type;
-
-            ir::global::parameter_type type {};
-
-            if (start->value == "i8")       type = i8;
-            else if (start->value == "i16") type = i16;
-            else if (start->value == "i32") type = i32;
-            else if (start->value == "i64") type = i64;
-            else if (start->value == "ptr") type = ptr;
-            else debug::assert(false, "Unknown parameter type");
-
-            std::string parameter_name;
-
-            if ((++start)->value == "%") {
-                debug::assert((++start)->type == lexer::token_type::identifier, "Expected identifier");
-                parameter_name = start++->value;
-            }
-
-            parameters.emplace_back(type, std::move(parameter_name));
-        } while (start->value == "," && (start++, true));
-    }
-
-    debug::assert(start++->value == ")", "Expected )");
-    debug::assert(start++->type == lexer::token_type::break_line, "Expected extern");
-
-    return ir::global::extern_function {std::move(name), std::move(parameters) };
+    return ir::global::extern_function { std::move(name), std::move(parameters), return_type };
 }
 
 ir::global::function parser::parse_function(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
@@ -94,6 +66,9 @@ ir::global::function parser::parse_function(ir::parser::lex_iter_t &start, ir::p
 
     if (start->value != ".")
         blocks.emplace_back("entry");
+
+    while (start->type == lexer::token_type::break_line)
+        ++start;
 
     while (start->value != "end") {
         if (start->value == ".") {
@@ -108,17 +83,44 @@ ir::global::function parser::parse_function(ir::parser::lex_iter_t &start, ir::p
         }
 
         blocks.back().instructions.push_back(parse_instruction(start, end));
-        debug::assert(start++->type == lexer::token_type::break_line, "Expected break line");
+
+        while (start->type == lexer::token_type::break_line)
+            ++start;
     }
 
-    if (end - start > 2)
-        start += 2; // Skip end and break line
-    else
-        start = end;
+    start++;
 
     return ir::global::function {
         std::move(function_prototype.name),
         std::move(function_prototype.parameters),
-        std::move(blocks)
+        std::move(blocks),
+        function_prototype.return_type
     };
+}
+
+std::vector<ir::variable> parser::parse_parameters(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
+    std::vector<ir::variable> parameters;
+
+    debug::assert(start++->value == "(", "Expected (");
+
+    if (start->value == ")") {
+        start++;
+        return parameters;
+    }
+
+    start--;
+
+    do {
+        start++;
+        auto param = parse_value(start, end);
+
+        if (std::holds_alternative<ir::int_literal>(param.val))
+            throw std::runtime_error("Integers are not allowed as parameters");
+
+        parameters.emplace_back(std::get<ir::variable>(param.val));
+    } while (start->value == ",");
+
+    debug::assert(start++->value == ")", "Expected )");
+
+    return parameters;
 }

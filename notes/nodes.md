@@ -32,14 +32,23 @@ store {size} {value}, %{ptr}:
 branch {true_label} {false_label} %{condition} 
     Branches to one of two labels based on the result of a comparison.
 
-%{value} = add {size} %{value1}, %{value2}:
+%{value} = add %{value1}, %{value2}:
     Adds two values together.
 
-%{value} = sub {size} %{value1}, %{value2}:
+%{value} = sub %{value1}, %{value2}:
     Subtracts one value from another.
 
-return %{value}:
+ret %{value}:
     Returns a value from a function.
+
+%{value_var} = zext {value_size} %{value_var}:
+    Zero extends a value_var to a larger or smaller size.
+
+%{value_var} = sext {value_size} %{value_var}:
+    Sign extends a value_var to a larger or smaller size.
+
+return %[value_var]:
+    Returns a value_var from a function.
 
 call {function_name}({val1}, {val2}...):
     Calls a function with the given parameters.
