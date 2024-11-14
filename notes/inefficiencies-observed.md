@@ -68,7 +68,7 @@ fib:
     ret     
 ```
 
-Solving this problem would require more sophisticated control flow analysis,
+Implementing this would require more sophisticated control flow analysis,
 determining where subroutines can be called from, and isolating sections of the
 routine that can have their own __stacksave logic as once entered, they can only
 be exited by returning.
