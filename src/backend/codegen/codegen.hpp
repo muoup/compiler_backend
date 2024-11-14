@@ -77,7 +77,6 @@ namespace backend::codegen {
 
         std::vector<register_t> dropped_available;
 
-        bool dropped_reassignable = true;
         bool register_tampered[register_count] {};
         bool register_is_param[register_count] {};
 
@@ -161,6 +160,10 @@ namespace backend::codegen {
             }
 
             throw std::runtime_error("Block not found");
+        }
+
+        bool dropped_reassignable() {
+            return current_instruction->instruction.inst->dropped_reassignable();
         }
     };
 

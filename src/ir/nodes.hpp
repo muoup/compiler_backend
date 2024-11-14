@@ -13,6 +13,7 @@
 #include <exception>
 
 #define PRINT_DEF(node_name, ...) void print(std::ostream &ostream) const override { __inst_print(ostream, node_name, ##__VA_ARGS__); }
+#define VISITOR_DEF(node_name) void accept(auto fn) { fn(*this); }
 
 namespace ir {
     namespace global {
@@ -232,6 +233,7 @@ namespace ir {
             void print(std::ostream &ostream) const override {
                 ostream << value.value;
             }
+            VISITOR_DEF();
 
             [[nodiscard]] ir::value_size get_return_size() const override { return value.size; }
         };
@@ -250,9 +252,10 @@ namespace ir {
 
             explicit allocate(size_t allocation_size)
                 :   instruction(node_type::allocate), size(allocation_size) {}
+            ~allocate() override = default;
 
             PRINT_DEF("allocate", size);
-            ~allocate() override = default;
+            VISITOR_DEF();
 
             [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::ptr; }
         };
@@ -266,9 +269,10 @@ namespace ir {
 
             explicit store(uint64_t size)
                 :   instruction(node_type::store), size(size) {}
+            ~store() override = default;
 
             PRINT_DEF("store", size);
-            ~store() override = default;
+            VISITOR_DEF();
         };
 
         /**
@@ -280,9 +284,10 @@ namespace ir {
 
             explicit load(value_size size)
                 :   instruction(node_type::load), size(size) {}
+            ~load() override = default;
 
             PRINT_DEF("load", ir::value_size_str(size));
-            ~load() override = default;
+            VISITOR_DEF();
 
             [[nodiscard]] ir::value_size get_return_size() const override { return size; }
         };
@@ -299,9 +304,10 @@ namespace ir {
                 :   instruction(node_type::branch),
                     true_branch(std::move(true_branch)),
                     false_branch(std::move(false_branch)) {}
+            ~branch() override = default;
 
             PRINT_DEF("branch", true_branch, false_branch);
-            ~branch() override = default;
+            VISITOR_DEF();
         };
 
         /**
@@ -313,9 +319,10 @@ namespace ir {
             explicit jmp(std::string branch)
                 : instruction(node_type::jmp),
                   label(std::move(branch)) {}
+            ~jmp() override = default;
 
             PRINT_DEF("jmp", label);
-            ~jmp() override = default;
+            VISITOR_DEF();
         };
 
         enum icmp_type : uint8_t {
@@ -364,9 +371,10 @@ namespace ir {
 
             explicit icmp(icmp_type type)
                 :   instruction(node_type::icmp), type(type) {}
+            ~icmp() override = default;
 
             PRINT_DEF("icmp", icmp_str(type));
-            ~icmp() override = default;
+            VISITOR_DEF();
 
             [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::i1; }
         };
@@ -381,12 +389,13 @@ namespace ir {
 
             explicit call(std::string name, value_size return_size)
                 :   instruction(node_type::call), return_size(return_size), name(std::move(name)) {}
-
-            [[nodiscard]] bool dropped_reassignable() const override { return false; }
-
-            PRINT_DEF("call", return_size, name);
             ~call() override = default;
 
+
+            PRINT_DEF("call", return_size, name);
+            VISITOR_DEF();
+
+            [[nodiscard]] bool dropped_reassignable() const override { return false; }
             [[nodiscard]] ir::value_size get_return_size() const override { return return_size; }
         };
 
@@ -394,10 +403,11 @@ namespace ir {
          *  Returns from a subroutine back to the callee.
          */
         struct ret : instruction {
-            PRINT_DEF("ret");
-
             ret() : instruction(node_type::ret) {}
             ~ret() override = default;
+
+            PRINT_DEF("ret");
+            VISITOR_DEF();
         };
 
         enum arithmetic_type : uint8_t {
@@ -427,10 +437,12 @@ namespace ir {
 
             explicit arithmetic(arithmetic_type type)
                 :   instruction(node_type::arithmetic), type(type) {}
-
-            PRINT_DEF(arithmetic_name(type));
             ~arithmetic() override = default;
 
+            PRINT_DEF(arithmetic_name(type));
+            VISITOR_DEF();
+
+            [[nodiscard]] bool dropped_reassignable() const override { return false; }
             [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::i32; }
         };
 
@@ -451,6 +463,7 @@ namespace ir {
             explicit phi(std::string branch1, std::string branch2)
                 : instruction(node_type::phi),
                   labels {std::move(branch1), std::move(branch2) } {}
+            ~phi() override = default;
 
             void print(std::ostream &ostream) const override {
                 __inst_print(ostream, "phi");
@@ -460,7 +473,7 @@ namespace ir {
                 }
             };
 
-            ~phi() override = default;
+            VISITOR_DEF();
 
             [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::param_dependent; }
         };
@@ -474,10 +487,11 @@ namespace ir {
             select() : instruction(node_type::select) {};
             ~select() override = default;
 
+            PRINT_DEF("select");
+            VISITOR_DEF();
+
             [[nodiscard]] bool dropped_reassignable() const override { return false; }
             [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::param_dependent; }
-
-            PRINT_DEF("select");
         };
 
         struct sext : instruction {
@@ -486,8 +500,10 @@ namespace ir {
             explicit sext(value_size new_size) : instruction(node_type::sext), new_size(new_size) {}
             ~sext() override = default;
 
-            [[nodiscard]] ir::value_size get_return_size() const override { return new_size; }
             PRINT_DEF("sext", ir::value_size_str(new_size));
+            VISITOR_DEF();
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return new_size; }
         };
 
         struct zext : instruction {
@@ -496,9 +512,46 @@ namespace ir {
             explicit zext(value_size new_size) : instruction(node_type::zext), new_size(new_size) {}
             ~zext() override = default;
 
-            [[nodiscard]] ir::value_size get_return_size() const override { return new_size; }
             PRINT_DEF("zext", ir::value_size_str(new_size));
+            VISITOR_DEF();
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return new_size; }
         };
+
+        auto node_visit(const block_instruction &inst, auto fn) {
+            switch (inst.inst->type) {
+                case node_type::literal:
+                    return fn(dynamic_cast<literal&>(*inst.inst));
+                case node_type::allocate:
+                    return fn(dynamic_cast<allocate&>(*inst.inst));
+                case node_type::store:
+                    return fn(dynamic_cast<store&>(*inst.inst));
+                case node_type::load:
+                    return fn(dynamic_cast<load&>(*inst.inst));
+                case node_type::branch:
+                    return fn(dynamic_cast<branch&>(*inst.inst));
+                case node_type::jmp:
+                    return fn(dynamic_cast<jmp&>(*inst.inst));
+                case node_type::icmp:
+                    return fn(dynamic_cast<icmp&>(*inst.inst));
+                case node_type::call:
+                    return fn(dynamic_cast<call&>(*inst.inst));
+                case node_type::ret:
+                    return fn(dynamic_cast<ret&>(*inst.inst));
+                case node_type::arithmetic:
+                    return fn(dynamic_cast<arithmetic&>(*inst.inst));
+                case node_type::phi:
+                    return fn(dynamic_cast<phi&>(*inst.inst));
+                case node_type::select:
+                    return fn(dynamic_cast<select&>(*inst.inst));
+                case node_type::sext:
+                    return fn(dynamic_cast<sext&>(*inst.inst));
+                case node_type::zext:
+                    return fn(dynamic_cast<zext&>(*inst.inst));
+            }
+
+            throw std::runtime_error("no such instruction type");
+        }
     }
 
     namespace global {

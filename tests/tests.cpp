@@ -6,6 +6,8 @@
 
 #include "lexer_test.cpp"
 #include "parser_consistency_tests.cpp"
+#include "execution_tests.cpp"
+
 #include "../src/backend/interface.hpp"
 
 void compile_and_cout(std::string_view file_name) {
@@ -26,7 +28,8 @@ void compile_and_cout(std::string_view file_name) {
 
 int main() {
     run_lexer_tests();
-    run_parser_consistency_tests();
+    run_exec_tests();
+//    run_parser_consistency_tests();
 
     compile_and_cout("../examples/fibonacci.ir");
 }

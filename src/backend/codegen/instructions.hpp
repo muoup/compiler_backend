@@ -19,9 +19,53 @@ namespace backend::codegen {
         std::unique_ptr<vptr> return_dest;
     };
 
+    template <typename T>
+    instruction_return gen_instruction(
+            function_context &context,
+            const T &instruction,
+            const v_operands &operands
+    ) {
+        throw std::runtime_error("Undefined instruction generation function");
+    }
+
+#define declare_instruction_gen(instruction_type) template<> \
+    instruction_return gen_instruction<ir::block::instruction_type>(\
+            function_context &context, \
+            const ir::block::instruction_type &inst,\
+            const v_operands &operands\
+    )
+
+    declare_instruction_gen(literal);
+
+    declare_instruction_gen(allocate);
+
+    declare_instruction_gen(store);
+
+    declare_instruction_gen(load);
+
+    declare_instruction_gen(icmp);
+
+    declare_instruction_gen(branch);
+
+    declare_instruction_gen(jmp);
+
+    declare_instruction_gen(ret);
+
+    declare_instruction_gen(arithmetic);
+
+    declare_instruction_gen(call);
+
+    declare_instruction_gen(phi);
+
+    declare_instruction_gen(select);
+
+    declare_instruction_gen(zext);
+
+    declare_instruction_gen(sext);
+
     instruction_return gen_literal(
             function_context &context,
-            const ir::block::literal &literal,
+            const ir::block::literal &inst,
             const v_operands &operands
     );
     instruction_return gen_allocate(
@@ -79,12 +123,6 @@ namespace backend::codegen {
             const ir::block::select &select,
             const v_operands &operands
     );
-    instruction_return gen_arithmetic_select(
-            function_context &context,
-            const ir::block::select &select,
-            const v_operands &virtual_operands
-            const backend::codegen::v_operands &operands
-    );
     instruction_return gen_zext(
             backend::codegen::function_context &context,
             const ir::block::zext &zext,
@@ -94,5 +132,11 @@ namespace backend::codegen {
             backend::codegen::function_context &context,
             const ir::block::sext &sext,
             const v_operands &operands
+    );
+
+    instruction_return gen_arithmetic_select(
+            function_context &context,
+            const ir::block::select &select,
+            const v_operands &virtual_operands
     );
 }

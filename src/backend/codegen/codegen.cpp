@@ -23,7 +23,7 @@ void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
     }
 }
 
-void backend::codegen::gen_function(const ir::root &root,
+void backend::codegen::gen_function(const ir::root &,
                                     std::ostream &ostream,
                                     const ir::global::function &function) {
     ostream << "\nglobal " << function.name << "\n\n";
@@ -66,7 +66,7 @@ void backend::codegen::gen_function(const ir::root &root,
                     context.dropped_available.emplace_back(reg_storage->reg);
                 }
 
-                if (context.dropped_reassignable)
+                if (context.dropped_reassignable())
                     context.remove_ownership(val, var.name.c_str());
             }
 
@@ -107,53 +107,8 @@ void backend::codegen::gen_function(const ir::root &root,
     }
 }
 
-template <typename T>
-backend::codegen::instruction_return gen(auto fn,
-                                         backend::codegen::function_context &context,
-                                         const ir::block::block_instruction &instruction,
-                                         const backend::codegen::v_operands &operands) {
-    context.dropped_reassignable = instruction.inst->dropped_reassignable();
-
-    auto ret = fn(context, dynamic_cast<const T&>(*instruction.inst), operands);
-
-    context.dropped_reassignable = true;
-
-    return ret;
-}
-
 backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
-    switch (instruction.inst->type) {
-        using enum ir::block::node_type;
-
-        case literal:
-            return gen<ir::block::literal>(gen_literal, context, instruction, instruction.operands);
-        case allocate:
-            return gen<ir::block::allocate>(gen_allocate, context, instruction, instruction.operands);
-        case store:
-            return gen<ir::block::store>(gen_store, context, instruction, instruction.operands);
-        case load:
-            return gen<ir::block::load>(gen_load, context, instruction, instruction.operands);
-        case icmp:
-            return gen<ir::block::icmp>(gen_icmp, context, instruction, instruction.operands);
-        case branch:
-            return gen<ir::block::branch>(gen_branch, context, instruction, instruction.operands);
-        case jmp:
-            return gen<ir::block::jmp>(gen_jmp, context, instruction, instruction.operands);
-        case ret:
-            return gen<ir::block::ret>(gen_return, context, instruction, instruction.operands);
-        case arithmetic:
-            return gen<ir::block::arithmetic>(gen_arithmetic, context, instruction, instruction.operands);
-        case call:
-            return gen<ir::block::call>(gen_call, context, instruction, instruction.operands);
-        case phi:
-            return gen<ir::block::phi>(gen_phi, context, instruction, instruction.operands);
-        case select:
-            return gen<ir::block::select>(gen_select, context, instruction, instruction.operands);
-        case zext:
-            return gen<ir::block::zext>(gen_zext, context, instruction, instruction.operands);
-        case sext:
-            return gen<ir::block::sext>(gen_sext, context, instruction, instruction.operands);
-    }
-
-    throw std::runtime_error("Unknown instruction");
+    return ir::block::node_visit(instruction, [&] <typename T> (const T &inst) {
+        return gen_instruction<T>(context, inst, instruction.operands);
+    });
 }

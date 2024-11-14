@@ -15,11 +15,10 @@ std::string get_run_command(const char *file) {
 }
 
 std::string get_clean_command(const char *file) {
-    return "rm " + std::string(file) + ".o";
+    return "rm " + std::string(file) + ".o" + " " + std::string(file) + ".asm";
 }
 
 void sys(const char *cmd) {
-    std::cout << "  Executing: " << cmd << std::endl;
     std::system(cmd);
 }
 

@@ -25,7 +25,7 @@ backend::codegen::find_register(backend::codegen::function_context &context, ir:
     // First check if any registers are being dropped, the most recent dropped registers are going
     // to be the operands dropped in the current instruction, so a separate routine for defaulting to
     // those is not needed.
-    if (context.dropped_reassignable) {
+    if (context.dropped_reassignable()) {
         auto reassign = context.dropped_available.back();
         context.dropped_available.pop_back();
 
