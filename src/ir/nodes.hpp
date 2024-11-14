@@ -117,9 +117,22 @@ namespace ir {
             return std::visit([](auto&& arg) -> value_size { return arg.size; }, val);
         }
         [[nodiscard]] std::string_view get_name() const {
-            if (std::holds_alternative<variable>(val))
-                return std::get<variable>(val).name;
-            else throw std::runtime_error("value is not a variable");
+            if (is_literal())
+                throw std::runtime_error("Cannot get name of literal");
+
+            return val.get_name();
+        }
+        [[nodiscard]] bool is_variable() const {
+            return std::holds_alternative<variable>(val);
+        }
+        [[nodiscard]] bool is_literal() const {
+            return std::holds_alternative<int_literal>(val);
+        }
+        [[nodiscard]] const ir::variable &var() const {
+            return std::get<ir::variable>(val);
+        }
+        [[nodiscard]] const ir::int_literal &lit() const {
+            return std::get<ir::int_literal>(val);
         }
     };
 

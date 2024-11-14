@@ -5,15 +5,12 @@
 #include <unordered_map>
 
 void backend::md::analyze_variable_lifetimes(ir::global::function &function) {
-    using value_variant = std::variant<ir::int_literal, ir::variable>;
-
     std::unordered_map<std::string, const ir::block::block_instruction*> lifetime_map {};
 
-    const auto document_lifetime = [&] (const value_variant &value_variant, const ir::block::block_instruction &instruction) {
-        if (std::holds_alternative<ir::variable>(value_variant)) {
-            const auto &variable = std::get<ir::variable>(value_variant);
-            lifetime_map[variable.name] = &instruction;
-        }
+    const auto document_lifetime = [&] (const ir::value &value, const ir::block::block_instruction &instruction) {
+        if (value.is_literal()) return;
+
+        lifetime_map[value.get_name().data()] = &instruction;
     };
 
     // First Pass - Document the last instruction where a variable is referenced
@@ -23,7 +20,7 @@ void backend::md::analyze_variable_lifetimes(ir::global::function &function) {
                 lifetime_map[instruction.assigned_to->name] = &instruction;
 
             for (const auto &operand : instruction.operands)
-                document_lifetime(operand.val, instruction);
+                document_lifetime(operand, instruction);
         }
     }
 
@@ -33,11 +30,10 @@ void backend::md::analyze_variable_lifetimes(ir::global::function &function) {
             auto &metadata = instruction.metadata;
 
             const auto detect_dropped = [&](const ir::value &val) {
-                if (!std::holds_alternative<ir::variable>(val.val))
+                if (!val.is_variable())
                     return false;
 
-                const auto &variable = std::get<ir::variable>(val.val);
-                return lifetime_map[variable.name] == &instruction;
+                return lifetime_map[val.get_name().data()] == &instruction;
             };
 
             for (const auto &operand : instruction.operands)

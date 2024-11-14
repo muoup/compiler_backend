@@ -57,17 +57,17 @@ void backend::codegen::gen_function(const ir::root &,
             // unless the instruction explicitly says that is not allowed
             for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
                 if (!instruction.metadata->dropped_data[i]) continue;
-                if (!std::holds_alternative<ir::variable>(instruction.operands[i].val)) continue;
+                if (instruction.operands[i].is_literal()) continue;
 
-                const auto &var = std::get<ir::variable>(instruction.operands[i].val);
-                const auto *val = context.value_map.at(var.name).get();
+                const auto var_name = instruction.operands[i].get_name().data();
+                const auto *val = context.value_map.at(var_name).get();
 
                 if (auto *reg_storage = dynamic_cast<const backend::codegen::register_storage*>(val)) {
                     context.dropped_available.emplace_back(reg_storage->reg);
                 }
 
                 if (context.dropped_reassignable())
-                    context.remove_ownership(val, var.name.c_str());
+                    context.remove_ownership(val, var_name);
             }
 
             context.current_instruction = instruction.metadata.get();
@@ -77,12 +77,10 @@ void backend::codegen::gen_function(const ir::root &,
             // fully drop the value -- i.e. remove it from the value map
             for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
                 if (!instruction.metadata->dropped_data[i]) continue;
-                if (!std::holds_alternative<ir::variable>(instruction.operands[i].val)) continue;
-
-                const auto &var = std::get<ir::variable>(instruction.operands[i].val);
+                if (!instruction.operands[i].is_variable()) continue;
 
                 context.drop_value(
-                    var
+                    instruction.operands[i].var()
                 );
             }
 

@@ -114,10 +114,11 @@ std::vector<ir::variable> parser::parse_parameters(ir::parser::lex_iter_t &start
         start++;
         auto param = parse_value(start, end);
 
-        if (std::holds_alternative<ir::int_literal>(param.val))
+        if (param.is_literal())
             throw std::runtime_error("Integers are not allowed as parameters");
 
-        parameters.emplace_back(std::get<ir::variable>(param.val));
+        // std::move used here as ownership is transferred to the vector
+        parameters.emplace_back(std::move(std::get<ir::variable>(param.val)));
     } while (start->value == ",");
 
     debug::assert(start++->value == ")", "Expected )");
