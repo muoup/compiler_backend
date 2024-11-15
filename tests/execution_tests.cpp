@@ -21,7 +21,7 @@ void assert_file_exitcode(const char* file_path, int exit_code) {
     backend::compile(ast, output);
     output.close();
 
-    debug::assert(exec::execute("../examples/output.asm") == exit_code, "Exit code does not match");
+    debug::assert(exec::run_once("../examples/output.asm") == exit_code, "Exit code does not match");
 }
 
 void run_exec_tests() {

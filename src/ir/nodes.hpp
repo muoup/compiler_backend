@@ -120,7 +120,7 @@ namespace ir {
             if (is_literal())
                 throw std::runtime_error("Cannot get name of literal");
 
-            return val.get_name();
+            return var().name;
         }
         [[nodiscard]] bool is_variable() const {
             return std::holds_alternative<variable>(val);

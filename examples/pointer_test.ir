@@ -1,0 +1,5 @@
+define fn i32 main()
+    %arr = alloca i32 32
+    %ptr = getelementptr i32 %arr, 2
+    store i32 5, %ptr
+end
