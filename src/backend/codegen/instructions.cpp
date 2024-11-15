@@ -141,12 +141,17 @@ backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block
     debug::assert(operands.size() <= 1, "Invalid Parameter Count for Return");
 
     if (!operands.empty()) {
+        auto ret_val = context.get_value(operands[0]);
+
+        debug::assert(ret_val.get_size() == context.return_type, "Return instruction must return the same type as the function declares.");
+
         context.add_asm_node<as::inst::mov>(
             as::create_operand(rax.get()),
-            context.get_value(operands[0]).gen_as_operand()
+            ret_val.gen_as_operand()
         );
     }
 
+    debug::assert(context.return_type == ir::value_size::none, "Cannot return nothing from a non-void returning function!");
     context.add_asm_node<as::inst::ret>();
     return {};
 }
