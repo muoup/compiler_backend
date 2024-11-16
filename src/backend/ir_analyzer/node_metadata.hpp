@@ -5,30 +5,21 @@
 #include <cstdint>
 #include <variant>
 
-namespace ir {
-    struct root;
+#include "../../ir/node_prototypes.hpp"
 
-    namespace global {
-        struct function;
-    }
-
-    namespace block {
-        struct block_instruction;
-        struct block;
-    }
-}
-
-namespace backend {
+namespace backend::md {
     struct instruction_metadata {
         const ir::block::block_instruction &instruction;
         std::vector<bool> dropped_data;
 
-        explicit instruction_metadata(const ir::block::block_instruction &instruction);
+        explicit instruction_metadata(const ir::block::block_instruction &instruction)
+            : instruction(instruction) {}
     };
 
     struct function_metadata {
         const ir::global::function &function;
 
-        explicit function_metadata(const ir::global::function &function);
+        explicit function_metadata(const ir::global::function &function)
+            : function(function) {}
     };
 }

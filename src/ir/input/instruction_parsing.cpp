@@ -117,6 +117,7 @@ std::vector<value> parser::parse_operands(ir::parser::lex_iter_t &start, ir::par
 std::optional<ir::value_size> parser::maybe_value_size(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {\
     std::string_view size = start->value;
 
+    if (size == "void") return value_size::none;
     if (size == "i8") return value_size::i8;
     if (size == "i1") return value_size::i1;
     if (size == "i16") return value_size::i16;

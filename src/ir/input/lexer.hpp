@@ -17,5 +17,5 @@ namespace ir::lexer {
         std::string value;
     };
 
-    std::vector<token> lex(const std::string& input);
+    std::vector<token> lex(std::string_view input);
 }

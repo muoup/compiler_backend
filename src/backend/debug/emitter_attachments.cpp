@@ -12,10 +12,7 @@ void backend::output::attach_variable_drop(std::ostream &ostream, const ir::bloc
         if (!block_instruction.metadata->dropped_data[i]) continue;
 
         const auto &operand = block_instruction.operands[i];
-        debug::assert(!std::holds_alternative<ir::int_literal>(operand.val), "An int literal cannot be dropped");
-        const auto &variable = std::get<ir::variable>(operand.val);
-
-        dropped_vars.push_back(variable.name);
+        dropped_vars.emplace_back(operand.get_name());
     }
 
     if (dropped_vars.empty())

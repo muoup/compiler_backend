@@ -2,55 +2,64 @@
 
 ## Global-Scope Nodes
 
-global_string [name] = "...": 
+global_string {name} = "...": 
     Contains a read-only string that can be used in the program.
 
-declare fn [name]({(param_type %|%ptr )param_name}...){ -> return_type}: 
+declare fn (return_type|void) {name}(type {val1}, type {val2}...): 
     Both defines a function prototype and declares its implementation.
 
-extern fn [name]({(param_type %|%ptr )param_name}...){ -> return_type}:
+extern fn (return_type|void) {name}(type1, type2...):
     Defines a function implementation. For use with external functions.
+    Works as well with libc functions as the backend links using gcc.
 
 ## Function-Scope Instructions
 
-[branch_label]:
+.{branch_label}:
     A label for branching instructions to jump to.
 
-%ptr [ptr] = allocate [size]:
-    Ensures there is space in stack memory for data of the given return_type.
+%{ptr} = allocate {size}:
+    Ensures there is space in stack memory for data of the given size.
 
-store [size] %[value_var], %ptr [ptr]:
-    Stores a value_var in stack memory at the given ptr_var.
+store {size} {value}, %{ptr}:
+    Stores a value in stack memory at the given ptr_var.
 
-%[value_var] = load [size] %ptr [ptr]:
-    Loads a value_var from stack memory at the given ptr_var.
+%{value} = load {size} %{ptr}:
+    Loads a value from stack memory at the given ptr_var.
 
-%[value_var] = icmp [size] [condition] %[value1], %[value2]:
+%{condition} = icmp {icmp_type} %{value1}, %{value2}:
     Compares two values for use with an if branching instruction.
 
-if %[condition] goto [true_label] else [false_label]:
+branch {true_label} {false_label} %{condition} 
     Branches to one of two labels based on the result of a comparison.
 
-%[value_var] = add [value_size] %[value1], %[value2]:
+%{value} = add %{value1}, %{value2}:
     Adds two values together.
 
-%[value_var] = sub [value_size] %[value1], %[value2]:
-    Subtracts one value_var from another.
+%{value} = sub %{value1}, %{value2}:
+    Subtracts one value from another.
 
-%[value_var] = zext [value_size] %[value_var]:
+ret %{value}:
+    Returns a value from a function.
+
+%{value_var} = zext {value_size} %{value_var}:
     Zero extends a value_var to a larger or smaller size.
 
-%[value_var] = sext [value_size] %[value_var]:
+%{value_var} = sext {value_size} %{value_var}:
     Sign extends a value_var to a larger or smaller size.
 
 return %[value_var]:
     Returns a value_var from a function.
 
-call [function_name]({param-type %param_name}...):
+call {function_name}({val1}, {val2}...):
     Calls a function with the given parameters.
 
-%[value_var] = call [function_name]({param-type %param_name}...):
-    Calls a function and stores the result
+%{value} = call {function_name}({val1}, {val2}...):
+    Calls a function and stores the result in the given value.
 
-%ptr [ptr] = call [function_name]({param-type %param_name}...):
-    Gets a ptr_var to an element at a given index in an array.
+%{value} = phi label1 label2 {value1}, {value2}:
+    A phi node that for now only supports two labels. This is used for branching,
+    where it can ensure that the correct value will be stored depending on
+    which label the program is branching from.
+
+%{value} = select %{condition}, {true_value}, {false_value}:
+    Selects a value based on a condition. Essentially acts as a ternary operator.

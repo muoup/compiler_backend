@@ -4,32 +4,33 @@
 
 #include "codegen.hpp"
 #include "valuegen.hpp"
-#include "inst_output.hpp"
+#include "asmgen/interface.hpp"
 
-#include "../../debug/assert.hpp"
 #include "dataflow.hpp"
 #include "asmgen/asm_nodes.hpp"
 
-backend::codegen::instruction_return backend::codegen::gen_literal(
-        backend::codegen::function_context &context,
-        const ir::block::literal &literal,
-        const backend::codegen::v_operands &operands
+template<>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::literal>(
+    backend::codegen::function_context &context,
+    const ir::block::literal &inst,
+    const v_operands &operands
 ) {
     debug::assert(operands.empty(), "Literal must have no operands");
 
     return backend::codegen::instruction_return {
-        std::make_unique<backend::codegen::literal>(literal.get_return_size(), literal.value.value)
+        std::make_unique<backend::codegen::literal>(inst.get_return_size(), inst.value.value)
     };
 }
 
-backend::codegen::instruction_return backend::codegen::gen_allocate(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::allocate>(
     backend::codegen::function_context &context,
-    const ir::block::allocate &allocate,
+    const ir::block::allocate &inst,
     const v_operands &operands
 ) {
-    debug::assert(operands.empty(), "Allocation size must be a multiple of 8");
+    debug::assert(operands.empty(), "Expected no operands for Allocate");
 
-    auto vptr = backend::codegen::stack_allocate(context, allocate.get_return_size());
+    auto vptr = backend::codegen::stack_allocate(context, inst.get_return_size());
     vptr->droppable = false;
 
     return backend::codegen::instruction_return {
@@ -37,68 +38,45 @@ backend::codegen::instruction_return backend::codegen::gen_allocate(
     };
 }
 
-backend::codegen::instruction_return backend::codegen::gen_store(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::store>(
     backend::codegen::function_context &context,
-    const ir::block::store &store,
+    const ir::block::store &,
     const v_operands &operands
 ) {
     debug::assert(operands.size() == 2, "Store instruction must have 2 operands");
 
-    backend::codegen::emit_move(context, operands[1], operands[0]);
+    context.add_asm_node<as::inst::mov>(
+        context.get_value(operands[0]).gen_as_operand(),
+        context.get_value(operands[1]).gen_as_operand()
+    );
 
     return backend::codegen::instruction_return {};
 }
 
-backend::codegen::instruction_return backend::codegen::gen_load(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::load>(
         backend::codegen::function_context &context,
-        const ir::block::load &load,
+        const ir::block::load &inst,
         const v_operands &operands
 ) {
     debug::assert(operands.size() == 1, "Load instruction must have 2 operands");
 
-    auto dest = backend::codegen::find_val_storage(context, load.size);
-    backend::codegen::emit_move(context, dest.get(), operands[0]);
+    auto dest = backend::codegen::find_val_storage(context, inst.size);
+    context.add_asm_node<as::inst::mov>(
+        as::create_operand(dest.get()),
+        context.get_value(operands[0]).gen_as_operand()
+    );
 
     return {
         .return_dest = std::move(dest)
     };
 }
 
-const char* backend::codegen::jmp_inst(ir::block::icmp_type type) {
-    switch (type) {
-        using enum ir::block::icmp_type;
-
-        case eq:
-            return "je";
-        case neq:
-            return "jne";
-
-        case slt:
-            return "jl";
-        case sgt:
-            return "jg";
-        case sle:
-            return "jle";
-        case sge:
-            return "jge";
-
-        case ult:
-            return "jb";
-        case ugt:
-            return "ja";
-        case ule:
-            return "jbe";
-        case uge:
-            return "jae";
-
-        default:
-            throw std::runtime_error("no such icmp type");
-    }
-}
-
-backend::codegen::instruction_return backend::codegen::gen_icmp(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::icmp>(
         backend::codegen::function_context &context,
-        const ir::block::icmp &icmp,
+        const ir::block::icmp &inst,
         const v_operands &operands
 ) {
     debug::assert(operands.size() == 2, "ICMP instruction must have 2 operands");
@@ -112,13 +90,14 @@ backend::codegen::instruction_return backend::codegen::gen_icmp(
     );
 
     return {
-        .return_dest = std::make_unique<backend::codegen::icmp_result>(icmp.type)
+        .return_dest = std::make_unique<backend::codegen::icmp_result>(inst.type)
     };
 }
 
-backend::codegen::instruction_return backend::codegen::gen_branch(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::branch>(
         backend::codegen::function_context &context,
-        const ir::block::branch &branch,
+        const ir::block::branch &inst,
         const v_operands &operands
 ) {
     debug::assert(operands.size() == 1, "Invalid Parameter Count for Branch");
@@ -128,29 +107,31 @@ backend::codegen::instruction_return backend::codegen::gen_branch(
     debug::assert(icmp_result, "Parameter of Branch is not a ICMP Result!");
 
     context.add_asm_node<as::inst::cond_jmp>(
-        icmp_result->flag,
-        branch.true_branch
+            icmp_result->flag,
+            inst.true_branch
     );
 
     context.add_asm_node<as::inst::jmp>(
-        branch.false_branch
+            inst.false_branch
     );
 
     return {};
 }
 
-backend::codegen::instruction_return backend::codegen::gen_jmp(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::jmp>(
         backend::codegen::function_context &context,
-        const ir::block::jmp &jmp,
+        const ir::block::jmp &inst,
         const v_operands &operands
 ) {
     debug::assert(operands.empty(), "Invalid Parameter Count for Jump");
 
-    context.add_asm_node<as::inst::jmp>(jmp.label);
+    context.add_asm_node<as::inst::jmp>(inst.label);
     return {};
 }
 
-backend::codegen::instruction_return backend::codegen::gen_return(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::ret>(
         backend::codegen::function_context &context,
         const ir::block::ret &,
         const v_operands &operands
@@ -159,47 +140,44 @@ backend::codegen::instruction_return backend::codegen::gen_return(
 
     debug::assert(operands.size() <= 1, "Invalid Parameter Count for Return");
 
-    if (!operands.empty())
-        codegen::emit_move(context, rax.get(), operands[0]);
+    if (!operands.empty()) {
+        auto ret_val = context.get_value(operands[0]);
 
+        debug::assert(ret_val.get_size() == context.return_type, "Return instruction must return the same type as the function declares.");
+
+        context.add_asm_node<as::inst::mov>(
+            as::create_operand(rax.get()),
+            ret_val.gen_as_operand()
+        );
+    }
+
+    debug::assert(context.return_type == ir::value_size::none, "Cannot return nothing from a non-void returning function!");
     context.add_asm_node<as::inst::ret>();
     return {};
 }
 
-const char* backend::codegen::arithmetic_command(ir::block::arithmetic_type type) {
-    switch (type) {
-        using enum ir::block::arithmetic_type;
-
-        case add:
-            return "add";
-        case sub:
-            return "sub";
-        case mul:
-            return "imul";
-        case div:
-            return "idiv";
-
-        default:
-            throw std::runtime_error("no such arithmetic type");
-    }
-}
-
-backend::codegen::instruction_return backend::codegen::gen_arithmetic(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::arithmetic>(
         backend::codegen::function_context &context,
-        const ir::block::arithmetic &arithmetic,
+        const ir::block::arithmetic &inst,
         const v_operands &operands
 ) {
-    debug::assert(operands.size() == 2, ">2 operands for arithmetic instruction not yet supported");
+    debug::assert(operands.size() == 2, ">2 operands for inst instruction not yet supported");
 
+    const auto lhs = context.get_value(operands[0]);
     const auto rhs = context.get_value(operands[1]);
 
     auto reg = backend::codegen::force_find_register(context, rhs.get_size());
-    emit_move(context, reg.get(), operands[0]);
+
+    context.add_asm_node<as::inst::mov>(
+        as::create_operand(reg.get()),
+        lhs.gen_as_operand()
+    );
 
     context.add_asm_node<as::inst::arithmetic>(
-            arithmetic.type,
-            as::create_operand(reg.get()),
-            rhs.gen_as_operand()
+        inst.type,
+        as::create_operand(reg.get()),
+        rhs.gen_as_operand()
     );
 
     return {
@@ -207,36 +185,48 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic(
     };
 }
 
-backend::codegen::instruction_return backend::codegen::gen_call(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::call>(
         backend::codegen::function_context &context,
-        const ir::block::call &call,
+        const ir::block::call &inst,
         const v_operands &operands
 ) {
     for (size_t i = 0; i < operands.size(); i++) {
         const auto param_reg_id = backend::codegen::param_register((uint8_t) i);
+        const auto param_old_storage = context.get_value(operands[i]).get_vptr_type<codegen::register_storage>();
 
-        copy_to_register(context, operands[i], param_reg_id);
+        // If the variable needs to be preserved and is already in the param register,
+        // move its ownership to another piece of memory, otherwise, copy it to the param register,
+        // even if this produces a redundant move operation, it will be recognized by the asm-gen and
+        // discarded during assembly generation.
+        if (!context.current_instruction->dropped_data[i]
+        &&  param_old_storage && param_old_storage->reg == param_reg_id) {
+            empty_register(context, param_reg_id);
+        } else {
+            copy_to_register(context, operands[i], param_reg_id);
+        }
     }
 
-    backend::codegen::empty_register(context, backend::codegen::register_t::rax);
-    context.add_asm_node<as::inst::call>(call.name);
+    empty_register(context, backend::codegen::register_t::rax);
+    context.add_asm_node<as::inst::call>(inst.name);
 
     return {
-        .return_dest = std::make_unique<backend::codegen::register_storage>(call.get_return_size(), codegen::register_t::rax)
+        .return_dest = std::make_unique<backend::codegen::register_storage>(inst.get_return_size(), codegen::register_t::rax)
     };
 }
 
-backend::codegen::instruction_return backend::codegen::gen_phi(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::phi>(
         backend::codegen::function_context &context,
-        const ir::block::phi &phi,
+        const ir::block::phi &inst,
         const backend::codegen::v_operands &operands
 ) {
-    debug::assert(operands.size() == phi.branches.size(), "Invalid Parameter Count for Phi");
-    auto mem = backend::codegen::find_val_storage(context, phi.get_return_size());
+    debug::assert(operands.size() == inst.labels.size(), "Invalid Parameter Count for Phi");
+    auto mem = backend::codegen::find_val_storage(context, inst.get_return_size());
     const auto &phi_block = context.current_label->name;
 
     for (size_t op = 0; op < operands.size(); op++) {
-        const auto &target = phi.branches[op];
+        const auto &target = inst.labels[op];
         const auto &val = context.get_value(operands[op]);
         const auto &val_name = operands[0].get_name();
 
@@ -274,7 +264,10 @@ backend::codegen::instruction_return backend::codegen::gen_phi(
                 auto cached_context = context.current_label;
                 context.current_label = &temp_block;
 
-                codegen::emit_move(context, mem.get(), operands[0]);
+                context.add_asm_node<as::inst::mov>(
+                    as::create_operand(mem.get()),
+                    val.gen_as_operand()
+                );
 
                 context.current_label = cached_context;
 
@@ -320,10 +313,10 @@ ir::block::icmp_type invert(ir::block::icmp_type type) {
     }
 }
 
-
-backend::codegen::instruction_return backend::codegen::gen_select(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::select>(
         backend::codegen::function_context &context,
-        const ir::block::select &select,
+        const ir::block::select &inst,
         const backend::codegen::v_operands &operands
 ) {
     debug::assert(operands.size() == 3, "Invalid Parameter Count for Select");
@@ -337,7 +330,7 @@ backend::codegen::instruction_return backend::codegen::gen_select(
     debug::assert(icmp, "First parameter of Select is not a ICMP Result!");
 
     if (!lhs->addressable() && !rhs->addressable()) {
-        return gen_arithmetic_select(context, select, operands);
+        return gen_arithmetic_select(context, inst, operands);
     }
 
     auto icmp_type = icmp->flag;
@@ -347,7 +340,7 @@ backend::codegen::instruction_return backend::codegen::gen_select(
         icmp_type = invert(icmp->flag);
     }
 
-    auto mem = backend::codegen::find_val_storage(context, select.get_return_size());
+    auto mem = backend::codegen::find_val_storage(context, inst.get_return_size());
 
     context.add_asm_node<as::inst::mov>(
         as::create_operand(mem.get()),
@@ -405,20 +398,21 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic_select(
     };
 }
 
-backend::codegen::instruction_return backend::codegen::gen_zext(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::zext>(
         backend::codegen::function_context &context,
-        const ir::block::zext &zext,
+        const ir::block::zext &inst,
         const backend::codegen::v_operands &operands
 ) {
     debug::assert(operands.size() == 1, "Invalid Parameter Count for Zext");
 
     if (const auto *literal = context.get_value(operands[0]).get_vptr_type<ir::int_literal>()) {
         return {
-            .return_dest = std::make_unique<backend::codegen::literal>(zext.get_return_size(), literal->value)
+            .return_dest = std::make_unique<backend::codegen::literal>(inst.get_return_size(), literal->value)
         };
     }
 
-    auto new_mem = backend::codegen::force_find_register(context, zext.get_return_size());
+    auto new_mem = backend::codegen::force_find_register(context, inst.get_return_size());
 
     if (operands[0].get_size() == ir::value_size::i1) {
         context.add_asm_node<as::inst::set>(
@@ -437,22 +431,23 @@ backend::codegen::instruction_return backend::codegen::gen_zext(
     };
 }
 
-backend::codegen::instruction_return backend::codegen::gen_sext(
+template <>
+backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::sext>(
     backend::codegen::function_context &context,
-    const ir::block::sext &sext,
+    const ir::block::sext &inst,
     const backend::codegen::v_operands &operands
 ) {
     debug::assert(operands.size() == 1, "Invalid Parameter Count for Sext");
 
-    auto new_mem = backend::codegen::find_val_storage(context, sext.get_return_size());
+    auto new_mem = backend::codegen::find_val_storage(context, inst.get_return_size());
 
     if (context.get_value(operands[0]).get_vptr_type<ir::int_literal>()) {
         return {
-            .return_dest = std::make_unique<backend::codegen::literal>(sext.get_return_size(), context.get_value(operands[0]).get_literal()->value)
+            .return_dest = std::make_unique<backend::codegen::literal>(inst.get_return_size(), context.get_value(operands[0]).get_literal()->value)
         };
     }
 
-    if (sext.get_return_size() > operands[0].get_size()) {
+    if (inst.get_return_size() > operands[0].get_size()) {
         context.add_asm_node<as::inst::movsx>(
             as::create_operand(new_mem.get()),
             context.get_value(operands[0]).gen_as_operand()

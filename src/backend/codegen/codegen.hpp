@@ -7,25 +7,9 @@
 #include "registers.hpp"
 #include "valuegen.hpp"
 
-#include "../../ir/nodes.hpp"
 #include "asmgen/asm_nodes.hpp"
-
-namespace ir {
-    struct root;
-
-    namespace global {
-        struct global_string;
-        struct extern_function;
-    }
-
-    namespace block {
-        struct block_instruction;
-    }
-}
-
-namespace backend::as {
-    struct label;
-}
+#include "../../ir/node_prototypes.hpp"
+#include "../ir_analyzer/node_metadata.hpp"
 
 namespace backend::codegen {
     struct instruction_return;
@@ -86,14 +70,13 @@ namespace backend::codegen {
 
         backend::as::label *current_label;
 
-        const backend::instruction_metadata *current_instruction;
+        const backend::md::instruction_metadata *current_instruction;
 
         std::unordered_map<std::string, virtual_pointer> value_map;
         std::unordered_map<int64_t, virtual_pointer> literal_cache;
 
         std::vector<register_t> dropped_available;
 
-        bool dropped_reassignable = true;
         bool register_tampered[register_count] {};
         bool register_is_param[register_count] {};
 
@@ -177,6 +160,10 @@ namespace backend::codegen {
             }
 
             throw std::runtime_error("Block not found");
+        }
+
+        bool dropped_reassignable() {
+            return current_instruction->instruction.inst->dropped_reassignable();
         }
     };
 
