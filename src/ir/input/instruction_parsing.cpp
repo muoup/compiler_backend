@@ -59,7 +59,7 @@ ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_it
     if (instruction == "allocate")
         return generate_instruction<ir::block::allocate, uint8_t>(start, end);
     else if (instruction == "store")
-        return generate_instruction<ir::block::store, uint8_t>(start, end);
+        return generate_instruction<ir::block::store, value_size>(start, end);
     else if (instruction == "load")
         return generate_instruction<ir::block::load, value_size>(start, end);
     else if (instruction == "icmp")
@@ -87,6 +87,8 @@ ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_it
         return generate_instruction<ir::block::zext, value_size>(start, end);
     else if (instruction == "sext")
         return generate_instruction<ir::block::sext, value_size>(start, end);
+    else if (instruction == "getarrayptr")
+        return generate_instruction<ir::block::get_array_ptr, value_size>(start, end);
     else debug::assert(false, (std::string("Unknown instruction: ") + instruction).c_str());
 
     throw std::runtime_error("Unreachable");
@@ -135,8 +137,14 @@ value_size parser::parse_value_size(ir::parser::lex_iter_t &start, ir::parser::l
     }
 
     std::cout << "WARNING: No value size specified, this will not be supported in the future!" << '\n';
-    std::cout << "Found " << start->value << '\n';
     std::cout << "Defaulting to i32" << '\n';
+    std::cout << "Found: ";
+
+    for (auto it = start; it != end && it->type != lexer::token_type::break_line; it++) {
+        std::cout << it->value << ' ';
+    }
+
+    std::cout << '\n';
 
     return value_size::i32;
 }

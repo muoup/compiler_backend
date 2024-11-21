@@ -14,7 +14,7 @@ void backend::codegen::copy_to_register(backend::codegen::function_context &cont
 
     context.add_asm_node<as::inst::mov>(
         as::create_operand(new_memory.get()),
-        context.get_value(value).gen_as_operand()
+        context.get_value(value).gen_operand()
     );
 }
 

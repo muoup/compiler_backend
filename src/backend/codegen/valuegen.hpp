@@ -46,12 +46,12 @@ namespace backend::codegen {
         ~register_storage() override = default;
     };
 
-    struct literal : vptr {
+    struct vptr_int_literal : vptr {
         uint64_t value;
 
-        explicit literal(ir::value_size size, uint64_t value)
+        explicit vptr_int_literal(ir::value_size size, uint64_t value)
             : vptr(size), value(value) {}
-        ~literal() override = default;
+        ~vptr_int_literal() override = default;
 
         [[nodiscard]] bool addressable() const override {
             return false;

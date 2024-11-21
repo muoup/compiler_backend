@@ -3,7 +3,7 @@
 
 using namespace backend;
 
-const char* codegen::register_name[register_count][4] = {
+const char* codegen::register_name[register_count + 2][4] = {
         { "al", "ax", "eax", "rax" },
         { "bl", "bx", "ebx", "rbx" },
         { "cl", "cx", "ecx", "rcx" },
@@ -18,7 +18,9 @@ const char* codegen::register_name[register_count][4] = {
         { "r13b", "r13w", "r13d", "r13" },
         { "r14b", "r14w", "r14d", "r14" },
         { "r15b", "r15w", "r15d", "r15" },
-        { "r16b", "r16w", "r16d", "r16" }
+        { "r16b", "r16w", "r16d", "r16" },
+        { "rsp", "rsp", "rsp", "rsp" },
+        { "rbp", "rbp", "rbp", "rbp" }
 };
 
 codegen::register_t codegen::param_register(uint8_t index) {

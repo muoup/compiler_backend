@@ -13,7 +13,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Enable sanitization and warnings
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -Wall -Wpedantic")
     add_executable(tests ${SOURCES})
-endif()
+else()
 
 add_library(compiler_backend STATIC ${SOURCES} library.cpp library.h)
 set_target_properties(compiler_backend PROPERTIES PUBLIC_HEADER "library.h")
@@ -28,3 +28,5 @@ install(
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+endif()

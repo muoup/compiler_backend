@@ -9,9 +9,16 @@ namespace backend::as::op {
                 : operand_t(operand_types::reg, size), index(index) {}
         ~reg() override = default;
 
-        [[nodiscard]] std::string get_address() const override {
-            return backend::codegen::register_as_string(index, size);
+        [[nodiscard]] std::string get_value() const override {
+            if (address) {
+                return std::string("(")
+                    .append(backend::codegen::register_as_string(index, size))
+                    .append(")");
+            } else {
+                return backend::codegen::register_as_string(index, size);
+            }
         }
+
         [[nodiscard]] bool equals(const operand_t& other) override {
             if (other.type != operand_types::reg)
                 return false;
@@ -27,7 +34,7 @@ namespace backend::as::op {
                 : operand_t(operand_types::literal, size), val(val) {}
         ~imm() override = default;
 
-        [[nodiscard]] std::string get_address() const override {
+        [[nodiscard]] std::string get_value() const override {
             return std::to_string(val);
         }
         [[nodiscard]] bool equals(const operand_t& other) override {
@@ -44,7 +51,7 @@ namespace backend::as::op {
         explicit stack_memory(ir::value_size size, size_t rbp_off)
                 : operand_t(operand_types::stack_mem, size), rbp_off(rbp_off) {}
 
-        [[nodiscard]] std::string get_address() const override {
+        [[nodiscard]] std::string get_value() const override {
             return codegen::get_stack_prefix(size) + "[rbp + " + std::to_string(rbp_off) + "]";
         }
         [[nodiscard]] bool equals(const operand_t& other) override {
@@ -61,7 +68,7 @@ namespace backend::as::op {
         explicit global_pointer(std::string name)
                 : operand_t(operand_types::global_ptr, ir::value_size::ptr), name(std::move(name)) {}
 
-        [[nodiscard]] std::string get_address() const override {
+        [[nodiscard]] std::string get_value() const override {
             return name;
         }
         [[nodiscard]] bool equals(const operand_t& other) override {
@@ -129,13 +136,13 @@ namespace backend::as::inst {
 
     static void print_inst(std::ostream &ostream, const char* name, const operand &oper1) {
         print_inst(ostream, name);
-        ostream << oper1->get_address();
+        ostream << oper1->get_value();
     }
 
     static void print_inst(std::ostream &ostream, const char* name, const operand &oper1, const operand &oper2) {
         print_inst(ostream, name, oper1);
         ostream << ", ";
-        ostream << oper2->get_address();
+        ostream << oper2->get_value();
     }
 
     void stack_save::print(backend::codegen::function_context &context) const {
@@ -166,37 +173,13 @@ namespace backend::as::inst {
     void arith_lea::print(backend::codegen::function_context &context) const {
         print_inst(context.ostream, "lea", dest);
 
-        context.ostream << ", [";
-
-        if (reg1.has_value()) {
-            context.ostream
-                << backend::codegen::register_as_string(reg1->reg, reg1->size)
-                << " + ";
-        }
-
-        if (reg2.has_value()) {
-            if (reg2_mul.has_value()) {
-                context.ostream
-                        << reg2_mul.value() << " * ";
-            }
-
-            context.ostream
-                    << backend::codegen::register_as_string(reg2->reg, reg2->size);
-        }
-
-        if (offset.has_value()) {
-            if (reg1.has_value() || reg2.has_value()) {
-                if (reg2_mul.has_value() && *reg2_mul < 0) {
-                    context.ostream << " - ";
-                } else {
-                    context.ostream << " + ";
-                }
-            }
-
-            context.ostream << offset.value();
-        }
-
-        context.ostream << "]";
+        context.ostream << ", ["
+            << offset
+            << " + "
+            << backend::codegen::register_as_string(reg.reg, ir::value_size::ptr)
+            << " * "
+            << reg_mul
+            << "]";
     }
 
     void cmov::print(backend::codegen::function_context &context) const {
@@ -275,4 +258,8 @@ std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(ir::int_
 
 std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr) {
     return create_operand(vptr, vptr->size);
+}
+
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(backend::codegen::register_t reg, ir::value_size size) {
+    return std::make_unique<op::reg>(size, reg);
 }

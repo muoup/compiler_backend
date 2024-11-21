@@ -15,9 +15,11 @@ backend::codegen::force_find_register(backend::codegen::function_context &contex
 }
 
 backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::codegen::function_context &context, ir::value_size size) {
+    auto off = context.current_stack_size;
+
     context.current_stack_size += ir::size_in_bytes(size);
 
-    return std::make_unique<stack_value>(size, context.current_stack_size);
+    return std::make_unique<stack_value>(size, off);
 }
 
 std::unique_ptr<backend::codegen::register_storage>
@@ -25,7 +27,7 @@ backend::codegen::find_register(backend::codegen::function_context &context, ir:
     // First check if any registers are being dropped, the most recent dropped registers are going
     // to be the operands dropped in the current instruction, so a separate routine for defaulting to
     // those is not needed.
-    if (context.dropped_reassignable()) {
+    if (context.dropped_reassignable() && !context.dropped_available.empty()) {
         auto reassign = context.dropped_available.back();
         context.dropped_available.pop_back();
 

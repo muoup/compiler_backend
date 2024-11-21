@@ -13,7 +13,10 @@ namespace backend::codegen {
         rax, rbx, rcx, rdx,
         rsi, rdi,
         r8, r9, r10, r11, r12,
-        r13, r14, r15, r16
+        r13, r14, r15, r16,
+
+        // Not to be used for regular storage
+        rsp, rbp
     };
 
     constexpr size_t register_count = register_t::r16 + 1;
@@ -25,7 +28,7 @@ namespace backend::codegen {
         qword
     };
 
-    extern const char* register_name[register_count][4];
+    extern const char* register_name[register_count + 2][4];
 
     const char * register_as_string(backend::codegen::register_t reg, ir::value_size size);
 

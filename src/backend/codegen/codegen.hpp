@@ -32,8 +32,14 @@ namespace backend::codegen {
             }, value);
         }
 
-        [[nodiscard]] auto gen_as_operand() const {
+        [[nodiscard]] auto gen_operand() const {
             return std::visit([](auto &&arg) { return as::create_operand(arg); }, value);
+        }
+
+        [[nodiscard]] auto gen_address() {
+            auto operand = gen_operand();
+            operand->address = true;
+            return operand;
         }
 
         void with_variable(const std::function<void(const vptr*)>& func) const {

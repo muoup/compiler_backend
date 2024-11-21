@@ -19,11 +19,12 @@ namespace backend::as {
         struct operand_t {
             const operand_types type;
             ir::value_size size;
+            bool address = false;
 
             explicit operand_t(operand_types type, ir::value_size size) : type(type), size(size) {}
             virtual ~operand_t() = default;
 
-            [[nodiscard]] virtual std::string get_address() const = 0;
+            [[nodiscard]] virtual std::string get_value() const = 0;
             [[nodiscard]] virtual bool equals(const operand_t& other) = 0;
         };
     }
@@ -69,16 +70,15 @@ namespace backend::as {
         struct arith_lea : asm_node {
             operand dest;
 
-            std::optional<int64_t> offset;
-            std::optional<explicit_register> reg1;
-
-            std::optional<int64_t> reg2_mul;
-            std::optional<explicit_register> reg2;
+            int64_t offset;
+            explicit_register reg;
+            int64_t reg_mul;
 
             arith_lea(operand dest,
-                      std::optional<int64_t> offset, std::optional<explicit_register> reg1,
-                      std::optional<int64_t> reg2_mul, std::optional<explicit_register> reg2)
-                    : dest(std::move(dest)), offset(offset), reg1(reg1), reg2_mul(reg2_mul), reg2(reg2) {}
+                      int64_t offset,
+                      explicit_register reg,
+                      int64_t reg_mul)
+                    : dest(std::move(dest)), offset(offset), reg(reg), reg_mul(reg_mul) {}
 
             ~arith_lea() override = default;
 
@@ -198,4 +198,6 @@ namespace backend::as {
 
     std::unique_ptr<backend::as::op::operand_t> create_operand(const codegen::vptr *vptr);
     std::unique_ptr<backend::as::op::operand_t> create_operand(ir::int_literal lit);
+
+    std::unique_ptr<backend::as::op::operand_t> create_operand(backend::codegen::register_t reg, ir::value_size size);
 }
