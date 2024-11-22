@@ -12,7 +12,8 @@ namespace backend::as {
         literal,
         reg,
         stack_mem,
-        global_ptr
+        global_ptr,
+        complex_ptr,
     };
 
     namespace op {
@@ -67,20 +68,16 @@ namespace backend::as {
             void print(backend::codegen::function_context &context) const override;
         };
 
-        struct arith_lea : asm_node {
+        struct lea : asm_node {
             operand dest;
+            operand ptr;
 
-            int64_t offset;
-            explicit_register reg;
-            int64_t reg_mul;
+            lea(operand dest, operand ptr)
+                    : dest(std::move(dest)), ptr(std::move(ptr)) {
+                this->ptr->address = true;
+            }
 
-            arith_lea(operand dest,
-                      int64_t offset,
-                      explicit_register reg,
-                      int64_t reg_mul)
-                    : dest(std::move(dest)), offset(offset), reg(reg), reg_mul(reg_mul) {}
-
-            ~arith_lea() override = default;
+            ~lea() override = default;
 
             void print(backend::codegen::function_context &context) const override;
         };
@@ -200,4 +197,5 @@ namespace backend::as {
     std::unique_ptr<backend::as::op::operand_t> create_operand(ir::int_literal lit);
 
     std::unique_ptr<backend::as::op::operand_t> create_operand(backend::codegen::register_t reg, ir::value_size size);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(backend::codegen::complex_ptr ptr);
 }

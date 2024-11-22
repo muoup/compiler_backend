@@ -30,10 +30,8 @@ backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block
 ) {
     debug::assert(operands.empty(), "Expected no operands for Allocate");
 
-    auto vptr = backend::codegen::stack_allocate(context, inst.get_return_size());
+    auto vptr = backend::codegen::stack_allocate(context, inst.size);
     vptr->droppable = false;
-
-    auto mem = backend::codegen::find_val_storage(context, inst.get_return_size());
 
     return backend::codegen::instruction_return {
         .return_dest = std::move(vptr)
@@ -43,13 +41,16 @@ backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block
 template <>
 backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block::store>(
     backend::codegen::function_context &context,
-    const ir::block::store &,
+    const ir::block::store &store,
     const v_operands &operands
 ) {
     debug::assert(operands.size() == 2, "Store instruction must have 2 operands");
 
+    auto mem = context.get_value(operands[0]).gen_operand();
+    mem->size = store.size;
+
     context.add_asm_node<as::inst::mov>(
-        context.get_value(operands[0]).gen_address(),
+        std::move(mem),
         context.get_value(operands[1]).gen_operand()
     );
 
@@ -65,12 +66,12 @@ backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block
     debug::assert(operands.size() == 1, "Load instruction must have 2 operands");
 
     auto dest = backend::codegen::find_val_storage(context, inst.size);
-
-    auto access = context.get_value(operands[0]);
+    auto access = context.get_value(operands[0]).gen_operand();
+    access->size = inst.size;
 
     context.add_asm_node<as::inst::mov>(
         as::create_operand(dest.get()),
-        access.gen_operand()
+        std::move(access)
     );
 
     return {
@@ -202,16 +203,24 @@ backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block
         const auto param_old_storage = context.get_value(operands[i]).get_vptr_type<codegen::register_storage>();
 
         if (operands[i].get_size() == ir::value_size::ptr) {
-            auto *stack = context.get_value(operands[i]).get_vptr_type<stack_value>();
-
-            if (stack) {
+            if (auto *stack = context.get_value(operands[i]).get_vptr_type<stack_value>()) {
+                codegen::empty_register(context, param_reg_id);
+                context.add_asm_node<as::inst::lea>(
+                    as::create_operand(param_reg_id, ir::value_size::ptr),
+                    as::create_operand(complex_ptr {
+                        ir::value_size::param_dependent,
+                        -stack->rbp_off,
+                        register_t::rbp,
+                        1
+                    })
+                );
+                continue;
+            } else if (auto *complex = context.get_value(operands[i]).get_vptr_type<complex_ptr>()) {
                 codegen::empty_register(context, param_reg_id);
 
-                context.add_asm_node<as::inst::arith_lea>(
-                    as::create_operand(param_reg_id, ir::value_size::ptr),
-                    -stack->rsp_off,
-                    as::inst::explicit_register { register_t::rbp },
-                    1
+                context.add_asm_node<as::inst::lea>(
+                    as::create_operand(param_reg_id, complex->size),
+                    as::create_operand(complex)
                 );
                 continue;
             }
@@ -230,6 +239,10 @@ backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block
     }
 
     empty_register(context, backend::codegen::register_t::rax);
+    context.add_asm_node<as::inst::mov>(
+        as::create_operand(backend::codegen::register_t::rax, ir::value_size::i64),
+        as::create_operand(ir::int_literal { ir::value_size::i64, 0 })
+    );
     context.add_asm_node<as::inst::call>(inst.name);
 
     return {
@@ -407,11 +420,14 @@ backend::codegen::instruction_return backend::codegen::gen_arithmetic_select(
         as::create_operand(mem.get())
     );
 
-    context.add_asm_node<as::inst::arith_lea>(
+    context.add_asm_node<as::inst::lea>(
         as::create_operand(mem.get()),
-        global_off,
-        as::inst::explicit_register { mem->reg, mem->size },
-        global_multi
+        as::create_operand(complex_ptr {
+            ir::value_size::none,
+            global_off,
+            mem->reg,
+            (int8_t) global_multi
+        })
     );
 
     return {
@@ -493,32 +509,29 @@ backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block
 
     const auto index_size = size_in_bytes(inst.element_size);
 
-    auto mem = backend::codegen::find_val_storage(context, inst.get_return_size());
-
     if (auto lit = index.get_literal(); lit.has_value()) {
         auto final_offset = lit->value * index_size;
-        register_t reg;
 
         if (auto *reg_storage = array.get_vptr_type<register_storage>(); reg_storage) {
-            reg = reg_storage->reg;
+            return {
+                .return_dest = std::make_unique<codegen::complex_ptr>(
+                    inst.element_size,
+                    final_offset,
+                    reg_storage->reg,
+                    1
+                )
+            };
         } else if (auto *stack = array.get_vptr_type<stack_value>(); stack) {
-            reg = register_t::rbp;
-            final_offset += stack->rsp_off;
-        } else {
-            throw std::runtime_error("Invalid array pointer type");
+            return {
+                .return_dest = std::make_unique<stack_value>(inst.element_size, final_offset - stack->rbp_off)
+            };
         }
 
-        context.add_asm_node<as::inst::arith_lea>(
-            as::create_operand(mem.get()),
-            -final_offset,
-            as::inst::explicit_register { reg },
-            1
-        );
-
-        return {
-            .return_dest = std::move(mem)
-        };
+        throw std::runtime_error("Invalid array pointer type");
     }
+
+    auto mem = backend::codegen::find_val_storage(context, inst.get_return_size());
+
 
     context.add_asm_node<as::inst::mov>(
         as::create_operand(mem.get()),

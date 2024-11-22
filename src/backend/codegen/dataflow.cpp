@@ -42,5 +42,5 @@ backend::codegen::virtual_pointer backend::codegen::find_val_storage(backend::co
     if (reg)
         return reg;
 
-    return backend::codegen::stack_allocate(context, size);
+    return backend::codegen::stack_allocate(context, ir::size_in_bytes(size));
 }

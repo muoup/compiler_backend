@@ -21,7 +21,7 @@ namespace backend::codegen {
     };
     using virtual_pointer = std::unique_ptr<vptr>;
 
-    virtual_pointer stack_allocate(backend::codegen::function_context &context, ir::value_size size);
+    virtual_pointer stack_allocate(backend::codegen::function_context &context, size_t size);
 
     std::unique_ptr<backend::codegen::register_storage>
     find_register(backend::codegen::function_context &context, ir::value_size size);
@@ -30,11 +30,21 @@ namespace backend::codegen {
 
     std::string get_stack_prefix(ir::value_size size);
 
-    struct stack_value : vptr {
-        size_t rsp_off;
+    struct complex_ptr : vptr {
+        int64_t offset;
+        register_t reg;
+        int8_t reg_scale;
 
-        explicit stack_value(ir::value_size size, size_t rsp_off)
-            : vptr(size), rsp_off(rsp_off) {}
+        explicit complex_ptr(ir::value_size element_size, int64_t offset, register_t reg, int8_t reg_scale)
+            : vptr(element_size), offset(offset), reg(reg), reg_scale(reg_scale) {}
+        ~complex_ptr() override = default;
+    };
+
+    struct stack_value : vptr {
+        int64_t rbp_off;
+
+        explicit stack_value(ir::value_size element_size, int64_t rbp_off)
+            : vptr(element_size), rbp_off(rbp_off) {}
         ~stack_value() override = default;
     };
 

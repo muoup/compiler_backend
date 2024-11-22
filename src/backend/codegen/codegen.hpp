@@ -42,6 +42,14 @@ namespace backend::codegen {
             return operand;
         }
 
+        [[nodiscard]] bool is_variable() const {
+            return std::holds_alternative<const vptr*>(value);
+        }
+
+        [[nodiscard]] bool is_literal() const {
+            return std::holds_alternative<ir::int_literal>(value);
+        }
+
         void with_variable(const std::function<void(const vptr*)>& func) const {
             auto *ptr = std::get_if<const vptr*>(&value);
 
@@ -116,8 +124,6 @@ namespace backend::codegen {
 
         value_reference get_value(const ir::variable &var) {
             auto ptr = value_map.at(var.name).get();
-
-            debug::assert(ptr->size == var.size, "Variable size mismatch");
 
             return value_reference { ptr };
         }

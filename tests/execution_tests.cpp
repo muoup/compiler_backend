@@ -21,11 +21,17 @@ void assert_file_exitcode(const char* file_path, int exit_code) {
     backend::compile(ast, output);
     output.close();
 
-    debug::assert(exec::run_once("../examples/output.asm") == exit_code, "Exit code does not match");
+    auto exit = exec::run_once("../examples/output.asm");
+
+    if (exit != exit_code) {
+        std::cerr << "Expected exit code " << exit_code << " but got " << exit << '\n';
+        std::exit(1);
+    }
 }
 
 void run_exec_tests() {
     assert_file_exitcode("../examples/fibonacci.ir", 55);
+    assert_file_exitcode("../examples/pointer_test.ir", 2);
 
     std::cout << "All execution tests passed\n";
 }

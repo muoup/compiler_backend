@@ -14,12 +14,10 @@ backend::codegen::force_find_register(backend::codegen::function_context &contex
     return std::make_unique<backend::codegen::register_storage>(size, backend::codegen::register_t::rax);
 }
 
-backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::codegen::function_context &context, ir::value_size size) {
-    auto off = context.current_stack_size;
+backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::codegen::function_context &context, size_t size) {
+    context.current_stack_size += size;
 
-    context.current_stack_size += ir::size_in_bytes(size);
-
-    return std::make_unique<stack_value>(size, off);
+    return std::make_unique<stack_value>(ir::value_size::param_dependent, context.current_stack_size);
 }
 
 std::unique_ptr<backend::codegen::register_storage>

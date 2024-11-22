@@ -17,4 +17,6 @@ define fn void fill_array(ptr %arr)
 
     %3 = getarrayptr i32 ptr %arr, i32 3
     store i32 ptr %3, i32 6
+
+    ret
 end
