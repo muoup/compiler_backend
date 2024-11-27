@@ -27,9 +27,8 @@ void compile_and_cout(std::string_view file_name) {
 }
 
 int main() {
-//    compile_and_cout("../examples/pointer_test.ir");
+    compile_and_cout("../examples/select_test.ir");
 
-//    run_lexer_tests();
     run_exec_tests();
 //    run_parser_consistency_tests();
 }

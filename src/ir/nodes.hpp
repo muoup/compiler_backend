@@ -15,6 +15,10 @@
 #define PRINT_DEF(node_name, ...) void print(std::ostream &ostream) const override { __inst_print(ostream, node_name, ##__VA_ARGS__); }
 #define VISITOR_DEF(node_name) void accept(auto fn) { fn(*this); }
 
+namespace backend::codegen {
+    struct vptr;
+}
+
 namespace ir {
     namespace global {
         struct global_node;
@@ -208,13 +212,7 @@ namespace ir {
                 if (size == ir::value_size::param_dependent) {
                     debug::assert(!operands.empty(), "param dependent size with multiple operands");
 
-                    auto o0_size = operands[0].get_size();
-
-                    for (const auto &operand : operands) {
-                        debug::assert(operand.get_size() == o0_size, "param dependent size with mismatched operand sizes");
-                    }
-
-                    assigned_to->size = o0_size;
+                    assigned_to->size = operands.back().get_size();
                 }
             }
 
@@ -589,8 +587,7 @@ namespace ir {
 
             explicit global_string(std::string name,
                                    std::string value)
-                :   name(std::move(name)),
-                    value(std::move(value)) {}
+               : name(std::move(name)), value(std::move(value)) {}
         };
 
         struct extern_function : global_node {

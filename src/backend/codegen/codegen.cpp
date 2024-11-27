@@ -5,11 +5,14 @@
 #include "asmgen/asm_nodes.hpp"
 
 void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
+    std::vector<std::unique_ptr<global_pointer>> global_strings;
+
     ostream << "[bits 64]\n";
 
     ostream << "section .global_strings\n";
     for (const auto& global_string : root.global_strings) {
         ostream << global_string.name << " db \"" << global_string.value << "\", 0\n";
+        global_strings.emplace_back(std::make_unique<global_pointer>(global_string.name));
     }
 
     ostream << "section .external_functions\n";
@@ -19,19 +22,21 @@ void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
 
     ostream << "section .text\n";
     for (const auto& function : root.functions) {
-        gen_function(root, ostream, function);
+        gen_function(root, ostream, function, global_strings);
     }
 }
 
 void backend::codegen::gen_function(const ir::root &,
                                     std::ostream &ostream,
-                                    const ir::global::function &function) {
+                                    const ir::global::function &function,
+                                    std::vector<std::unique_ptr<global_pointer>> &global_strings) {
     ostream << "\nglobal " << function.name << "\n\n";
     ostream << function.name << ':' << '\n';
 
     backend::codegen::function_context context {
         .return_type = function.return_type,
         .ostream = ostream,
+        .global_strings = global_strings,
     };
 
     context.asm_blocks.emplace_back("__stacksave");
@@ -62,7 +67,7 @@ void backend::codegen::gen_function(const ir::root &,
                 if (instruction.operands[i].is_literal()) continue;
 
                 const auto var_name = instruction.operands[i].get_name().data();
-                const auto *val = context.value_map.at(var_name).get();
+                const auto *val = context.get_value(instruction.operands[i].var()).get_variable();
 
                 if (auto *reg_storage = dynamic_cast<const backend::codegen::register_storage*>(val)) {
                     context.dropped_available.emplace_back(reg_storage->reg);

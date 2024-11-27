@@ -33,7 +33,7 @@ const backend::codegen::vptr* backend::codegen::empty_register(backend::codegen:
         as::create_operand(old_mem)
     );
     context.remap_value(reg_storage, std::move(new_mem));
-    return context.value_map.at(reg_storage).get();
+    return context.get_value(reg_storage);
 }
 
 backend::codegen::virtual_pointer backend::codegen::find_val_storage(backend::codegen::function_context &context, ir::value_size size) {

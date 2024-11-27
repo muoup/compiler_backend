@@ -408,7 +408,7 @@ std::optional<backend::codegen::instruction_return> backend::codegen::gen_arithm
     debug::assert(lhs->size == rhs->size, "Select Operands must be the same size");
     debug::assert(cond, "First parameter of Select is not a ICMP Result!");
 
-    if (!lhs.has_value() || rhs.has_value())
+    if (!lhs.has_value() || !rhs.has_value())
         return std::nullopt;
 
     auto higher = (uint64_t) lhs->value;
@@ -420,7 +420,13 @@ std::optional<backend::codegen::instruction_return> backend::codegen::gen_arithm
         flag = invert(flag);
     }
 
-    auto mem = backend::codegen::force_find_register(context, ir::value_size::i64);
+    auto base = lower;
+    auto offset = higher - lower;
+
+    if (base >= 10)
+        return std::nullopt;
+
+    auto mem = backend::codegen::force_find_register(context, lhs->size);
 
     context.add_asm_node<as::inst::set>(
         flag,
@@ -432,9 +438,9 @@ std::optional<backend::codegen::instruction_return> backend::codegen::gen_arithm
         as::create_operand(mem.get()),
         as::create_operand(complex_ptr {
             ir::value_size::none,
-            (int64_t) lower,
+            (int64_t) base,
             mem->reg,
-            (int8_t) higher
+            (int8_t) offset
         })
     );
 

@@ -80,6 +80,8 @@ namespace backend::codegen {
         const ir::value_size return_type;
 
         std::ostream& ostream;
+        std::vector<std::unique_ptr<global_pointer>> &global_strings;
+
         std::vector<backend::as::label> asm_blocks;
 
         backend::as::label *current_label;
@@ -120,16 +122,23 @@ namespace backend::codegen {
         }
 
         const vptr* get_value(const char* name) {
-            return value_map.at(name).get();
+            if (value_map.contains(name))
+                return value_map[name].get();
+
+            for (const auto &str : global_strings) {
+                if (str->name == name) {
+                    return str.get();
+                }
+            }
+
+            throw std::runtime_error("Value not found");
         }
 
         value_reference get_value(const ir::variable &var) {
-            auto ptr = value_map.at(var.name).get();
-
-            return value_reference { ptr };
+            return value_reference { get_value(var.name.c_str()) };
         }
 
-        value_reference get_value(const ir::int_literal &var) {
+        static value_reference get_value(const ir::int_literal &var) {
             return value_reference { var };
         }
 
@@ -161,10 +170,6 @@ namespace backend::codegen {
             return value_map.contains(std::string { name });
         }
 
-        vptr* get_value(std::string_view name) const {
-            return value_map.at(std::string { name }).get();
-        }
-
         int64_t find_block(std::string_view name) {
             for (int64_t i = 0; i < (int64_t) asm_blocks.size(); i++) {
                 if (asm_blocks[i].name == name) {
@@ -181,7 +186,8 @@ namespace backend::codegen {
     };
 
     void generate(const ir::root& root, std::ostream& ostream);
-    void gen_function(const ir::root& root, std::ostream &ostream, const ir::global::function &function);
+    void gen_function(const ir::root &root, std::ostream &ostream, const ir::global::function &function,
+                      std::vector<std::unique_ptr<global_pointer>> &global_strings);
 
     instruction_return gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction);
 }

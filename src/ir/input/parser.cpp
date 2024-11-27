@@ -1,5 +1,4 @@
 #include "parser.hpp"
-#include "../../debug/assert.hpp"
 #include "instruction_parsing.hpp"
 
 using namespace ir;
