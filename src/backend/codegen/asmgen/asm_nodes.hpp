@@ -112,7 +112,7 @@ namespace backend::as {
             set(ir::block::icmp_type type, operand op)
                     : type(type), op(std::move(op)) {
                 debug::assert(this->op->type == operand_types::reg, "set operand must be a register");
-                debug::assert(this->op->size == ir::value_size::i1, "set operand must be 1 byte");
+                debug::assert(this->op->size == ir::value_size::i1, "set operand must be a i1");
             }
 
             ~set() override = default;

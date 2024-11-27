@@ -51,9 +51,9 @@ namespace backend::codegen {
     declare_instruction_gen(sext);
     declare_instruction_gen(get_array_ptr);
 
-    instruction_return gen_arithmetic_select(
-            function_context &context,
-            const ir::block::select &select,
-            const v_operands &virtual_operands
+    std::optional<backend::codegen::instruction_return> gen_arithmetic_select(
+            backend::codegen::function_context &context,
+            const ir::block::select &,
+            const backend::codegen::v_operands &operands
     );
 }

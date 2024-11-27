@@ -23,10 +23,9 @@ namespace backend::codegen {
 
     virtual_pointer stack_allocate(backend::codegen::function_context &context, size_t size);
 
-    std::unique_ptr<backend::codegen::register_storage>
-    find_register(backend::codegen::function_context &context, ir::value_size size);
-    std::unique_ptr<backend::codegen::register_storage>
-    force_find_register(backend::codegen::function_context &context, ir::value_size size);
+    std::unique_ptr<backend::codegen::register_storage> find_register(backend::codegen::function_context &context, ir::value_size size);
+    std::unique_ptr<backend::codegen::register_storage> force_find_register(backend::codegen::function_context &context, ir::value_size size);
+    std::unique_ptr<backend::codegen::register_storage> claim_temp_register(backend::codegen::function_context &context, ir::value_size size);
 
     std::string get_stack_prefix(ir::value_size size);
 

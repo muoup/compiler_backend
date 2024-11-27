@@ -181,7 +181,7 @@ namespace ir {
             virtual void print(std::ostream&) const = 0;
 
             [[nodiscard]] virtual bool dropped_reassignable() const { return true; }
-            [[nodiscard]] virtual ir::value_size get_return_size() const { return ir::value_size::none; }
+            [[nodiscard]] virtual ir::value_size get_return_size() const { return ir::value_size::param_dependent; }
         };
 
         /**
@@ -471,7 +471,6 @@ namespace ir {
             VISITOR_DEF();
 
             [[nodiscard]] bool dropped_reassignable() const override { return false; }
-            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::i32; }
         };
 
         /**
@@ -502,8 +501,6 @@ namespace ir {
             };
 
             VISITOR_DEF();
-
-            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::param_dependent; }
         };
 
         /**
@@ -519,7 +516,6 @@ namespace ir {
             VISITOR_DEF();
 
             [[nodiscard]] bool dropped_reassignable() const override { return false; }
-            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::param_dependent; }
         };
 
         struct sext : instruction {

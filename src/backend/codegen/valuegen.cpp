@@ -14,6 +14,15 @@ backend::codegen::force_find_register(backend::codegen::function_context &contex
     return std::make_unique<backend::codegen::register_storage>(size, backend::codegen::register_t::rax);
 }
 
+std::unique_ptr<backend::codegen::register_storage> backend::codegen::claim_temp_register(backend::codegen::function_context &context, ir::value_size size) {
+    auto reg = force_find_register(context, size);
+
+    context.register_mem[reg->reg] = "temp";
+    context.temp_reg_used.push_back(reg->reg);
+
+    return reg;
+}
+
 backend::codegen::virtual_pointer backend::codegen::stack_allocate(backend::codegen::function_context &context, size_t size) {
     context.current_stack_size += size;
 

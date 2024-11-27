@@ -93,7 +93,7 @@ namespace backend::as::op {
             ss << "[";
 
             if (reg_scale != 1)
-                ss << reg_scale << " * ";
+                ss << (int) reg_scale << " * ";
 
             ss << backend::codegen::register_as_string(reg.reg, ir::value_size::ptr);
 

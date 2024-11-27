@@ -357,35 +357,36 @@ backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block
     debug::assert(operands.size() == 3, "Invalid Parameter Count for Select");
 
     const auto cond = context.get_value(operands[0]).get_vptr_type<codegen::icmp_result>();
-    auto lhs= context.get_value(operands[1]).get_variable();
-    auto rhs = context.get_value(operands[2]).get_variable();
+    auto true_val= context.get_value(operands[1]);
+    auto false_val = context.get_value(operands[2]);
 
     const auto *icmp = dynamic_cast<const backend::codegen::icmp_result*>(cond);
 
+    debug::assert(true_val.get_size() == false_val.get_size(), "Select Operands must be the same size");
     debug::assert(icmp, "First parameter of Select is not a ICMP Result!");
 
-    if (!lhs->addressable() && !rhs->addressable()) {
-        return gen_arithmetic_select(context, inst, operands);
+    if (true_val.is_literal() && false_val.is_literal()) {
+        if (auto arith_select = gen_arithmetic_select(context, inst, operands))
+            return std::move(*arith_select);
+
+        auto temp = backend::codegen::claim_temp_register(context, true_val.get_size());
+        codegen::copy_to_register(context, operands[1], temp->reg);
+
+        true_val.value = temp.release();
     }
 
     auto icmp_type = icmp->flag;
-
-    if (!lhs->addressable()) {
-        std::swap(lhs, rhs);
-        icmp_type = invert(icmp->flag);
-    }
-
-    auto mem = backend::codegen::find_val_storage(context, inst.get_return_size());
+    auto mem = backend::codegen::force_find_register(context, true_val.get_size());
 
     context.add_asm_node<as::inst::mov>(
         as::create_operand(mem.get()),
-        as::create_operand(rhs)
+        false_val.gen_operand()
     );
 
     context.add_asm_node<as::inst::cmov>(
         icmp_type,
         as::create_operand(mem.get()),
-        as::create_operand(lhs)
+        true_val.gen_operand()
     );
 
     return {
@@ -393,44 +394,51 @@ backend::codegen::instruction_return backend::codegen::gen_instruction<ir::block
     };
 }
 
-backend::codegen::instruction_return backend::codegen::gen_arithmetic_select(
+std::optional<backend::codegen::instruction_return> backend::codegen::gen_arithmetic_select(
         backend::codegen::function_context &context,
         const ir::block::select &,
         const backend::codegen::v_operands &operands
 ) {
     debug::assert(operands.size() == 3, "Invalid Parameter Count for Select");
 
-    const auto *cond = context.get_value(operands[0]).get_vptr_type<codegen::icmp_result>();
+    auto *cond = context.get_value(operands[0]).get_vptr_type<codegen::icmp_result>();
     auto lhs = context.get_value(operands[1]).get_literal();
     auto rhs = context.get_value(operands[2]).get_literal();
 
     debug::assert(lhs->size == rhs->size, "Select Operands must be the same size");
-
     debug::assert(cond, "First parameter of Select is not a ICMP Result!");
-    debug::assert(lhs.has_value(), "Second parameter of Arithmetic Select is not a Literal!");
-    debug::assert(rhs.has_value(), "Third parameter of Arithmetic Select is not a Literal!");
 
-    auto global_off = (int64_t) lhs->value;
-    auto global_multi = (int64_t) rhs->value - global_off;
+    if (!lhs.has_value() || rhs.has_value())
+        return std::nullopt;
 
-    auto mem = codegen::force_find_register(context, lhs->size);
+    auto higher = (uint64_t) lhs->value;
+    auto lower = (uint64_t) rhs->value;
+    auto flag = cond->flag;
+
+    if (lower > higher) {
+        std::swap(higher, lower);
+        flag = invert(flag);
+    }
+
+    auto mem = backend::codegen::force_find_register(context, ir::value_size::i64);
 
     context.add_asm_node<as::inst::set>(
-        cond->flag,
-        as::create_operand(mem.get())
+        flag,
+        as::create_operand(mem.get(), ir::value_size::i1)
     );
 
+    // val = lower + (upper - lower) * cond
     context.add_asm_node<as::inst::lea>(
         as::create_operand(mem.get()),
         as::create_operand(complex_ptr {
             ir::value_size::none,
-            global_off,
+            (int64_t) lower,
             mem->reg,
-            (int8_t) global_multi
+            (int8_t) higher
         })
     );
 
-    return {
+    return instruction_return {
         .return_dest = std::move(mem)
     };
 }

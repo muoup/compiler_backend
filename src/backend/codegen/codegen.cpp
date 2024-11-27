@@ -53,6 +53,8 @@ void backend::codegen::gen_function(const ir::root &,
         context.current_label = &context.asm_blocks.back();
 
         for (const auto &instruction : block.instructions) {
+            context.current_instruction = instruction.metadata.get();
+
             // Do not drop the value, but allow the compiler to reassign to by the end of the instruction
             // unless the instruction explicitly says that is not allowed
             for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
@@ -70,7 +72,6 @@ void backend::codegen::gen_function(const ir::root &,
                     context.remove_ownership(val, var_name);
             }
 
-            context.current_instruction = instruction.metadata.get();
             auto info = gen_instruction(context, instruction);
 
             // Now that the instruction is done and the variable will no longer by referenced,
@@ -83,6 +84,12 @@ void backend::codegen::gen_function(const ir::root &,
                     instruction.operands[i].var()
                 );
             }
+
+            for (const auto &temp_reg : context.temp_reg_used) {
+                context.register_mem[temp_reg] = nullptr;
+            }
+
+            context.temp_reg_used.clear();
 
             if (info.return_dest && instruction.assigned_to) {
                 context.map_value(

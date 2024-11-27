@@ -90,6 +90,7 @@ namespace backend::codegen {
         std::unordered_map<int64_t, virtual_pointer> literal_cache;
 
         std::vector<register_t> dropped_available;
+        std::vector<register_t> temp_reg_used;
 
         bool register_tampered[register_count] {};
         bool register_is_param[register_count] {};
@@ -174,7 +175,7 @@ namespace backend::codegen {
             throw std::runtime_error("Block not found");
         }
 
-        bool dropped_reassignable() {
+        bool dropped_reassignable() const {
             return current_instruction->instruction.inst->dropped_reassignable();
         }
     };
