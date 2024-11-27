@@ -37,7 +37,8 @@ std::string_view get_extensionless_filename(std::string_view file) {
 }
 
 int run_routine(std::string_view extensionless_path) {
-    sys(get_nasm_command(extensionless_path));
+    if (WEXITSTATUS(sys(get_nasm_command(extensionless_path))))
+        return -1;
     sys(get_gcc_command(extensionless_path));
     sys(get_clean_command(extensionless_path));
 

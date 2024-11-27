@@ -32,8 +32,22 @@ namespace backend::codegen {
             }, value);
         }
 
-        [[nodiscard]] auto gen_as_operand() const {
+        [[nodiscard]] auto gen_operand() const {
             return std::visit([](auto &&arg) { return as::create_operand(arg); }, value);
+        }
+
+        [[nodiscard]] auto gen_address() {
+            auto operand = gen_operand();
+            operand->address = true;
+            return operand;
+        }
+
+        [[nodiscard]] bool is_variable() const {
+            return std::holds_alternative<const vptr*>(value);
+        }
+
+        [[nodiscard]] bool is_literal() const {
+            return std::holds_alternative<ir::int_literal>(value);
         }
 
         void with_variable(const std::function<void(const vptr*)>& func) const {
@@ -76,6 +90,7 @@ namespace backend::codegen {
         std::unordered_map<int64_t, virtual_pointer> literal_cache;
 
         std::vector<register_t> dropped_available;
+        std::vector<register_t> temp_reg_used;
 
         bool register_tampered[register_count] {};
         bool register_is_param[register_count] {};
@@ -110,8 +125,6 @@ namespace backend::codegen {
 
         value_reference get_value(const ir::variable &var) {
             auto ptr = value_map.at(var.name).get();
-
-            debug::assert(ptr->size == var.size, "Variable size mismatch");
 
             return value_reference { ptr };
         }
@@ -162,7 +175,7 @@ namespace backend::codegen {
             throw std::runtime_error("Block not found");
         }
 
-        bool dropped_reassignable() {
+        bool dropped_reassignable() const {
             return current_instruction->instruction.inst->dropped_reassignable();
         }
     };

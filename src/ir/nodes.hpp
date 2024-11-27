@@ -158,7 +158,8 @@ namespace ir {
             branch, jmp, icmp,
             call, ret,
             arithmetic, phi, select,
-            sext, zext
+            sext, zext,
+            get_array_ptr,
         };
 
         /**
@@ -180,7 +181,7 @@ namespace ir {
             virtual void print(std::ostream&) const = 0;
 
             [[nodiscard]] virtual bool dropped_reassignable() const { return true; }
-            [[nodiscard]] virtual ir::value_size get_return_size() const { return ir::value_size::none; }
+            [[nodiscard]] virtual ir::value_size get_return_size() const { return ir::value_size::param_dependent; }
         };
 
         /**
@@ -278,9 +279,9 @@ namespace ir {
          *  that value in the stack memory referenced by the pointer.
          */
         struct store : instruction {
-            uint64_t size;
+            value_size size;
 
-            explicit store(uint64_t size)
+            explicit store(value_size size)
                 :   instruction(node_type::store), size(size) {}
             ~store() override = default;
 
@@ -412,6 +413,20 @@ namespace ir {
             [[nodiscard]] ir::value_size get_return_size() const override { return return_size; }
         };
 
+        struct get_array_ptr : instruction {
+            value_size element_size;
+
+            explicit get_array_ptr(value_size element_size)
+                :   instruction(node_type::get_array_ptr),
+                    element_size(element_size) {}
+            ~get_array_ptr() override = default;
+
+            PRINT_DEF("get_array_ptr", element_size);
+            VISITOR_DEF();
+
+            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::ptr; }
+        };
+
         /**
          *  Returns from a subroutine back to the callee.
          */
@@ -456,7 +471,6 @@ namespace ir {
             VISITOR_DEF();
 
             [[nodiscard]] bool dropped_reassignable() const override { return false; }
-            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::i32; }
         };
 
         /**
@@ -487,8 +501,6 @@ namespace ir {
             };
 
             VISITOR_DEF();
-
-            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::param_dependent; }
         };
 
         /**
@@ -504,7 +516,6 @@ namespace ir {
             VISITOR_DEF();
 
             [[nodiscard]] bool dropped_reassignable() const override { return false; }
-            [[nodiscard]] ir::value_size get_return_size() const override { return ir::value_size::param_dependent; }
         };
 
         struct sext : instruction {
@@ -561,6 +572,8 @@ namespace ir {
                     return fn(dynamic_cast<sext&>(*inst.inst));
                 case node_type::zext:
                     return fn(dynamic_cast<zext&>(*inst.inst));
+                case node_type::get_array_ptr:
+                    return fn(dynamic_cast<get_array_ptr&>(*inst.inst));
             }
 
             throw std::runtime_error("no such instruction type");

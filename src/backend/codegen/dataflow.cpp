@@ -14,7 +14,7 @@ void backend::codegen::copy_to_register(backend::codegen::function_context &cont
 
     context.add_asm_node<as::inst::mov>(
         as::create_operand(new_memory.get()),
-        context.get_value(value).gen_as_operand()
+        context.get_value(value).gen_operand()
     );
 }
 
@@ -42,5 +42,5 @@ backend::codegen::virtual_pointer backend::codegen::find_val_storage(backend::co
     if (reg)
         return reg;
 
-    return backend::codegen::stack_allocate(context, size);
+    return backend::codegen::stack_allocate(context, ir::size_in_bytes(size));
 }

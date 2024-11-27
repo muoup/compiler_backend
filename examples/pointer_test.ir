@@ -1,16 +1,22 @@
 define fn i32 main()
-    %arr = alloca i32 32
-    %ptr = getarrayptr i32 ptr %arr, 4
-    store i32 5, %ptr
+    %arr = allocate 32
+
+    call void fill_array ptr %arr
+
+    %ptr = getarrayptr i32 ptr %arr, i32 1
+    %ret = load i32 ptr %ptr
+    ret i32 %ret
 end
 
 define fn void fill_array(ptr %arr)
-    %1 = getarrayptr i32 ptr %arr, 1
-    store i32 %1, 2
+    %1 = getarrayptr i32 ptr %arr, i32 1
+    store i32 ptr %1, i32 2
 
-    %2 = getarrayptr i32 ptr %arr, 2
-    store i32 %2, 4
+    %2 = getarrayptr i32 ptr %arr, i32 2
+    store i32 ptr %2, i32 4
 
-    %3 = getarrayptr i32 ptr %arr, 3
-    store i32 %3, 6
+    %3 = getarrayptr i32 ptr %arr, i32 3
+    store i32 ptr %3, i32 6
+
+    ret
 end
