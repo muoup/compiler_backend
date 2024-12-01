@@ -6,7 +6,7 @@
 #include <string>
 #include "../../ir/nodes.hpp"
 
-namespace backend::codegen {
+namespace backend::context {
     struct function_context;
 
     enum register_t : uint8_t {
@@ -30,7 +30,7 @@ namespace backend::codegen {
 
     extern const char* register_name[register_count + 2][4];
 
-    const char * register_as_string(backend::codegen::register_t reg, ir::value_size size);
+    const char * register_as_string(backend::context::register_t reg, ir::value_size size);
 
     register_t  param_register(uint8_t index);
     const char * param_register_string(uint8_t index, ir::value_size size);

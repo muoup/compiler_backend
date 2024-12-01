@@ -1,7 +1,8 @@
-#include <fstream>
-#include <iostream>
 #include "../src/backend/interface.hpp"
 #include "../src/exec/executor.hpp"
+#include "../src/ir/input/parser.hpp"
+#include <fstream>
+#include <iostream>
 
 void assert_file_exitcode(const char* file_path, int exit_code) {
     std::ifstream file { file_path };

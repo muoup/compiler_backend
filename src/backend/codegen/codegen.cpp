@@ -1,10 +1,12 @@
 #include <sstream>
 
 #include "codegen.hpp"
+#include "context/function_context.hpp"
 #include "instructions.hpp"
 #include "asmgen/asm_nodes.hpp"
+#include "context/value_reference.hpp"
 
-void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
+void backend::context::generate(const ir::root& root, std::ostream& ostream) {
     std::vector<std::unique_ptr<global_pointer>> global_strings;
 
     ostream << "[bits 64]\n";
@@ -26,14 +28,14 @@ void backend::codegen::generate(const ir::root& root, std::ostream& ostream) {
     }
 }
 
-void backend::codegen::gen_function(const ir::root &,
+void backend::context::gen_function(const ir::root &,
                                     std::ostream &ostream,
                                     const ir::global::function &function,
                                     std::vector<std::unique_ptr<global_pointer>> &global_strings) {
     ostream << "\nglobal " << function.name << "\n\n";
     ostream << function.name << ':' << '\n';
 
-    backend::codegen::function_context context {
+    backend::context::function_context context {
         .return_type = function.return_type,
         .ostream = ostream,
         .global_strings = global_strings,
@@ -44,12 +46,12 @@ void backend::codegen::gen_function(const ir::root &,
     context.add_asm_node<as::inst::stack_save>();
 
     for (size_t i = 0; i < function.parameters.size(); i++){
-        auto reg = backend::codegen::param_register(i);
-        auto size = function.parameters[i].size;
+        auto reg = backend::context::param_register(i);
 
-        auto reg_storage = std::make_unique<backend::codegen::register_storage>(size, reg);
+        auto &name = function.parameters[i].name;
+        auto &size = function.parameters[i].size;
 
-        context.map_value(function.parameters[i], std::move(reg_storage));
+        context.storage.value_map[name] = context.storage.get_register(reg, size);
         context.register_is_param[reg] = true;
     }
 
@@ -60,46 +62,37 @@ void backend::codegen::gen_function(const ir::root &,
         for (const auto &instruction : block.instructions) {
             context.current_instruction = instruction.metadata.get();
 
-            // Do not drop the value, but allow the compiler to reassign to by the end of the instruction
-            // unless the instruction explicitly says that is not allowed
-            for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
-                if (!instruction.metadata->dropped_data[i]) continue;
-                if (instruction.operands[i].is_literal()) continue;
-
-                const auto var_name = instruction.operands[i].get_name().data();
-                const auto *val = context.get_value(instruction.operands[i].var()).get_variable();
-
-                if (auto *reg_storage = dynamic_cast<const backend::codegen::register_storage*>(val)) {
-                    context.dropped_available.emplace_back(reg_storage->reg);
-                }
-
-                if (context.dropped_reassignable())
-                    context.remove_ownership(val, var_name);
-            }
-
-            auto info = gen_instruction(context, instruction);
-
-            // Now that the instruction is done and the variable will no longer by referenced,
-            // fully drop the value -- i.e. remove it from the value map
             for (size_t i = 0; i < instruction.metadata->dropped_data.size(); i++) {
                 if (!instruction.metadata->dropped_data[i]) continue;
                 if (!instruction.operands[i].is_variable()) continue;
 
-                context.drop_value(
-                    instruction.operands[i].var()
-                );
+                auto var = context.storage.get_value(instruction.operands[i]);
+
+                if (!var.is_variable()) continue;
+
+                context.storage.pending_drop.emplace_back(*var.get_name());
             }
 
-            for (const auto &temp_reg : context.temp_reg_used) {
-                context.register_mem[temp_reg] = nullptr;
-            }
+            if (context.auto_drop_reassignable())
+                context.storage.drop_reassignable();
 
-            context.temp_reg_used.clear();
+            auto info = gen_instruction(context, instruction);
+
+            if (!context.auto_drop_reassignable())
+                context.storage.drop_reassignable();
+
+            context.storage.erase_reassignable();
+
+            for (const auto &reg : context.storage.registers) {
+                if (reg->owner.starts_with("__temp"))
+                    reg->unclaim();
+                reg->frozen = false;
+            }
 
             if (info.return_dest && instruction.assigned_to) {
-                context.map_value(
+                context.storage.map_value(
                     *instruction.assigned_to,
-                    std::move(info.return_dest)
+                    info.return_dest
                 );
             }
         }
@@ -117,7 +110,7 @@ void backend::codegen::gen_function(const ir::root &,
     }
 }
 
-backend::codegen::instruction_return backend::codegen::gen_instruction(backend::codegen::function_context &context, const ir::block::block_instruction &instruction) {
+backend::context::instruction_return backend::context::gen_instruction(backend::context::function_context &context, const ir::block::block_instruction &instruction) {
     return ir::block::node_visit(instruction, [&] <typename T> (const T &inst) {
         return gen_instruction<T>(context, inst, instruction.operands);
     });

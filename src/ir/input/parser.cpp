@@ -39,13 +39,12 @@ ir::global::global_string parser::parse_global_string(ir::parser::lex_iter_t &st
     debug::assert((++start)->value == "=", "Expected =");
     debug::assert((++start)->type == lexer::token_type::string, "Expected c\"");
 
-    return ir::global::global_string {name, start++->value };
+    return ir::global::global_string { name, start++->value };
 }
 
 ir::global::extern_function parser::parse_extern_function(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     debug::assert((start++)->value == "fn", "Expected fn");
 
-    // TODO: Function return type static analysis
     auto return_type = parse_value_size(start, end);
 
     debug::assert(start->type == lexer::token_type::identifier, "Expected identifier");
@@ -55,7 +54,11 @@ ir::global::extern_function parser::parse_extern_function(ir::parser::lex_iter_t
 
     debug::assert(start++->type == lexer::token_type::break_line, "Expected Break Line");
 
-    return ir::global::extern_function { std::move(name), std::move(parameters), return_type };
+    return ir::global::extern_function {
+        std::move(name),
+        std::move(parameters),
+        return_type
+    };
 }
 
 ir::global::function parser::parse_function(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {

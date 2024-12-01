@@ -34,7 +34,7 @@ namespace backend::as {
         using operand = std::unique_ptr<op::operand_t>;
 
         struct explicit_register {
-            backend::codegen::register_t reg;
+            backend::context::register_t reg;
             ir::value_size size;
         };
 
@@ -42,7 +42,7 @@ namespace backend::as {
             bool is_valid = true;
 
             virtual ~asm_node() = default;
-            virtual void print(backend::codegen::function_context &context) const = 0;
+            virtual void print(backend::context::function_context &context) const = 0;
             [[nodiscard]] bool printable() const { return is_valid; }
         };
 
@@ -51,7 +51,7 @@ namespace backend::as {
 
             ~stack_save() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct mov : asm_node {
@@ -65,7 +65,7 @@ namespace backend::as {
 
             ~mov() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct lea : asm_node {
@@ -79,7 +79,7 @@ namespace backend::as {
 
             ~lea() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct cmov : asm_node {
@@ -91,7 +91,7 @@ namespace backend::as {
 
             ~cmov() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct movsx : asm_node {
@@ -102,7 +102,7 @@ namespace backend::as {
 
             ~movsx() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct set : asm_node {
@@ -117,7 +117,7 @@ namespace backend::as {
 
             ~set() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct jmp : asm_node {
@@ -128,7 +128,7 @@ namespace backend::as {
 
             ~jmp() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct cmp : asm_node {
@@ -139,7 +139,7 @@ namespace backend::as {
 
             ~cmp() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct cond_jmp : asm_node {
@@ -151,7 +151,7 @@ namespace backend::as {
 
             ~cond_jmp() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct arithmetic : asm_node {
@@ -163,7 +163,7 @@ namespace backend::as {
 
             ~arithmetic() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct call : asm_node {
@@ -174,14 +174,14 @@ namespace backend::as {
 
             ~call() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
 
         struct ret : asm_node {
             ret() = default;
             ~ret() override = default;
 
-            void print(backend::codegen::function_context &context) const override;
+            void print(backend::context::function_context &context) const override;
         };
     }
 
@@ -190,12 +190,12 @@ namespace backend::as {
         std::vector<std::unique_ptr<inst::asm_node>> nodes;
     };
 
-    std::unique_ptr<backend::as::op::operand_t> create_operand(const codegen::vptr *vptr, ir::value_size size);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(const context::virtual_memory *vptr, ir::value_size size);
     std::unique_ptr<backend::as::op::operand_t> create_operand(ir::int_literal lit, ir::value_size size);
 
-    std::unique_ptr<backend::as::op::operand_t> create_operand(const codegen::vptr *vptr);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(const context::virtual_memory *vptr);
     std::unique_ptr<backend::as::op::operand_t> create_operand(ir::int_literal lit);
 
-    std::unique_ptr<backend::as::op::operand_t> create_operand(backend::codegen::register_t reg, ir::value_size size);
-    std::unique_ptr<backend::as::op::operand_t> create_operand(backend::codegen::complex_ptr ptr);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(backend::context::register_t reg, ir::value_size size);
+    std::unique_ptr<backend::as::op::operand_t> create_operand(const backend::context::memory_addr& ptr);
 }

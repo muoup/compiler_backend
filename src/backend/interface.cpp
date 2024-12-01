@@ -5,7 +5,7 @@
 
 void backend::compile(ir::root &root, std::ostream &ostream) {
     analyze_ir(root);
-    backend::codegen::generate(root, ostream);
+    backend::context::generate(root, ostream);
 }
 
 void backend::analyze_ir(ir::root &root) {
