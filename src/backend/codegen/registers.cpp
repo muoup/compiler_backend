@@ -3,7 +3,7 @@
 
 using namespace backend;
 
-const char* codegen::register_name[register_count + 2][4] = {
+const char*context::register_name[register_count + 2][4] = {
         { "al", "ax", "eax", "rax" },
         { "bl", "bx", "ebx", "rbx" },
         { "cl", "cx", "ecx", "rcx" },
@@ -23,7 +23,7 @@ const char* codegen::register_name[register_count + 2][4] = {
         { "rbp", "rbp", "rbp", "rbp" }
 };
 
-codegen::register_t codegen::param_register(uint8_t index) {
+context::register_t context::param_register(uint8_t index) {
     const static register_t call_registers[] = {
             rdi,
             rsi,
@@ -33,11 +33,11 @@ codegen::register_t codegen::param_register(uint8_t index) {
     return call_registers[index];
 }
 
-const char * codegen::param_register_string(uint8_t index, ir::value_size size) {
+const char *context::param_register_string(uint8_t index, ir::value_size size) {
     return register_as_string(param_register(index), size);
 }
 
-const char * codegen::register_as_string(backend::codegen::register_t reg, ir::value_size size) {
+const char *context::register_as_string(backend::context::register_t reg, ir::value_size size) {
     switch (ir::size_in_bytes(size)) {
         case 1:
             return register_name[reg][0];

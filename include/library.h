@@ -8,8 +8,7 @@ namespace cb {
 
         code_unit() = default;
 
-        function_builder
-        create_function(std::string name, ir::value_size return_type, std::vector<ir::variable> parameters);
+        function_builder create_function(std::string name, ir::value_size return_type, std::vector<ir::variable> parameters);
     };
 
     struct function_builder {

@@ -5,10 +5,10 @@
 #include <thread>
 
 #include "lexer_test.cpp"
-#include "parser_consistency_tests.cpp"
 #include "execution_tests.cpp"
 
 #include "../src/backend/interface.hpp"
+#include "../src/ir/input/parser.hpp"
 
 void compile_and_cout(std::string_view file_name) {
     std::ifstream file { file_name.begin() };
@@ -27,9 +27,7 @@ void compile_and_cout(std::string_view file_name) {
 }
 
 int main() {
-//    compile_and_cout("../examples/pointer_test.ir");
+//    compile_and_cout("../examples/fibonacci.ir");
 
-//    run_lexer_tests();
-    run_exec_tests();
-//    run_parser_consistency_tests();
+        run_exec_tests();
 }

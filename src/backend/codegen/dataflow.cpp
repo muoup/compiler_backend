@@ -1,46 +1,49 @@
 #include "dataflow.hpp"
 #include "codegen.hpp"
-#include "asmgen/interface.hpp"
 
-void backend::codegen::copy_to_register(backend::codegen::function_context &context,
+#include "context/function_context.hpp"
+#include "context/value_reference.hpp"
+
+void backend::context::copy_to_register(backend::context::function_context &context,
                                         const ir::value &value,
-                                        backend::codegen::register_t reg) {
-    auto *val_reg = context.get_value(value).get_vptr_type<register_storage>();
-
-    if (val_reg == nullptr || val_reg->reg != reg)
-        backend::codegen::empty_register(context, reg);
-
-    auto new_memory = std::make_unique<backend::codegen::register_storage>(value.get_size(), reg);
+                                        backend::context::register_t reg) {
+    backend::context::empty_register(context, reg);
 
     context.add_asm_node<as::inst::mov>(
-        as::create_operand(new_memory.get()),
-        context.get_value(value).gen_operand()
+        as::create_operand(reg, value.get_size()),
+        context.storage.get_value(value).gen_operand()
     );
 }
 
-const backend::codegen::vptr* backend::codegen::empty_register(backend::codegen::function_context &context,
-                                                               backend::codegen::register_t reg) {
-    auto *reg_storage = context.register_mem[reg];
+backend::context::virtual_memory * backend::context::empty_register(backend::context::function_context &context,
+                                                                    backend::context::register_t reg) {
+    auto *reg_storage = context.storage.registers[static_cast<size_t>(reg)].get();
 
-    if (!reg_storage || !context.has_value(reg_storage))
-        return nullptr;
+    if (!reg_storage->in_use())
+        return reg_storage;
 
-    auto *old_mem = context.get_value(reg_storage);
-    auto new_mem = backend::codegen::find_val_storage(context, old_mem->size);
+    auto old_mem = context.storage.get_value(reg_storage->owner);
+
+    if (old_mem.is_literal())
+        return reg_storage;
+
+    auto new_mem = backend::context::find_val_storage(context, old_mem.get_size());
 
     context.add_asm_node<as::inst::mov>(
-        as::create_operand(new_mem.get()),
-        as::create_operand(old_mem)
+        as::create_operand(new_mem),
+        old_mem.gen_operand()
     );
-    context.remap_value(reg_storage, std::move(new_mem));
-    return context.value_map.at(reg_storage).get();
+
+    context.storage.remap_value(reg_storage->owner, new_mem);
+    return new_mem;
 }
 
-backend::codegen::virtual_pointer backend::codegen::find_val_storage(backend::codegen::function_context &context, ir::value_size size) {
-    auto reg = backend::codegen::find_register(context, size);
+backend::context::virtual_memory *
+backend::context::find_val_storage(backend::context::function_context &context, ir::value_size size) {
+    auto reg = backend::context::find_register(context, size);
 
     if (reg)
         return reg;
 
-    return backend::codegen::stack_allocate(context, ir::size_in_bytes(size));
+    return backend::context::stack_allocate(context, ir::size_in_bytes(size));
 }

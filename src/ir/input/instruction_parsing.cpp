@@ -43,11 +43,11 @@ ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_it
 
         return block::block_instruction {
             std::make_unique<block::literal>(
-                    ir::int_literal {
-                                *size,
-                                static_cast<uint64_t>(std::stoi(start++->value))
-                        }
-                    ),
+                ir::int_literal {
+                        *size,
+                        static_cast<uint64_t>(std::stoi(start++->value))
+                }
+            ),
             {}
         };
     }
