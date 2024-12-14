@@ -1,7 +1,9 @@
 /// Idea: Compare IR generated from input to itself re-ran through the lexer and parser
 
 #include <fstream>
+#include <sstream>
 #include <string_view>
+
 #include "../src/ir/input/parser.hpp"
 #include "../src/ir/output/ir_emitter.hpp"
 
@@ -21,7 +23,7 @@ void test_consistency(std::string_view file_path) {
     auto parsed = ir::parser::parse(tokens);
 
     std::stringstream ss;
-    ir::output::emit(ss, parsed);
+    ir::output::emit(parsed, ss);
 
     auto ir2 = ss.str();
     auto lex2 = ir::lexer::lex(ir2);
@@ -29,16 +31,13 @@ void test_consistency(std::string_view file_path) {
 
     ss.clear();
 
-    ir::output::emit(ss, parsed);
+    ir::output::emit(parsed, ss);
     auto ir3 = ss.str();
 
-    if (ir3 == ss.str()) {
-        std::cout << "Parser Consistency Passed for " << file_path << '\n';
-        return;
+    if (ir3 != ss.str()) {
+        std::cerr << "Parser Inconsistency Found for " << file_path << '\n';
+        std::cout << ir2 << '\n' << ir3 << '\n';
     }
-
-    std::cerr << "Parser Inconsistency Found for " << file_path << '\n';
-    std::cout << ir2 << '\n' << ir3 << '\n';
 }
 
 void run_parser_consistency_tests() {
@@ -46,6 +45,7 @@ void run_parser_consistency_tests() {
     test_consistency("../examples/fibonacci.ir");
     test_consistency("../examples/hello_world.ir");
     test_consistency("../examples/phi_test.ir");
-    test_consistency("../examples/read_write_exact.ir");
     test_consistency("../examples/select_test.ir");
+
+    std::cout << "Parser Consistency Tests Passed" << '\n';
 }

@@ -13,7 +13,7 @@ namespace ir::output {
 
     inline emitter_attachment<ir::block::block_instruction> instruction_emitter_attachment = nullptr;
 
-    void emit(std::ostream &ostream, const ir::root& root);
+    void emit(const ir::root &root, std::ostream &ostream);
 
     void emit_function(std::ostream &ostream, const ir::global::function &function);
     void emit_external_function(std::ostream &ostream, const ir::global::extern_function &extern_function);

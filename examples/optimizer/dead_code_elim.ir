@@ -1,0 +1,16 @@
+define fn i32 test(i32 %n)
+    %cond = icmp eq i32 %n, i32 0
+    branch true_branch false_branch i1 %cond
+
+.true_branch:
+    jmp end
+
+.false_branch:
+    jmp end
+
+.dead_branch:
+    jmp end
+
+.end:
+    ret i32 0
+end
