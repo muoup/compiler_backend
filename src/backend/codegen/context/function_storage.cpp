@@ -5,9 +5,9 @@
 
 using namespace backend;
 
-void context::function_storage::remap_value(const std::string& name, backend::context::virtual_memory *value) {
+void context::function_storage::remap_value(std::string name, backend::context::virtual_memory *value) {
     if (has_value(name)) {
-        drop_ownership(name.c_str());
+        drop_ownership(name);
         erase_value(name);
     }
 
@@ -17,8 +17,10 @@ void context::function_storage::remap_value(const std::string& name, backend::co
 void context::function_storage::map_value(std::string name, virtual_memory *value) {
     value_map[name] = value;
 
-    if (auto *ptr = dynamic_cast<register_storage*>(value))
+    if (auto *ptr = dynamic_cast<register_storage*>(value)) {
+        ptr->grab(value->size);
         ptr->owner = std::move(name);
+    }
 }
 
 void context::function_storage::map_value(const ir::variable &var, virtual_memory *value) {
@@ -51,11 +53,11 @@ context::function_storage::claim_temp_register(backend::context::register_t reg,
     val.value = std::move(temp_name);
 }
 
-void context::function_storage::drop_ownership(const char *name) {
+void context::function_storage::drop_ownership(std::string_view name) {
     if (!has_value(name))
         return;
 
-    auto value = value_map[name];
+    auto value = value_map[std::string { name }];
 
     if (auto *reg = dynamic_cast<register_storage*>(value)) {
         reg->unclaim();
@@ -77,7 +79,7 @@ void context::function_storage::erase_value(std::string_view name) {
 
 void context::function_storage::drop_reassignable() {
     for (const auto &var : pending_drop) {
-        drop_ownership(var.c_str());
+        drop_ownership(var);
     }
 }
 

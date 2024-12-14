@@ -28,7 +28,7 @@ namespace backend::context {
         };
         std::vector<owned_vmem> misc_storage;
 
-        void remap_value(const std::string& name, virtual_memory *value);
+        void remap_value(std::string name, backend::context::virtual_memory *value);
         void map_value(std::string name, virtual_memory *value);
         void map_value(const ir::variable &var, virtual_memory *value);
 
@@ -42,7 +42,7 @@ namespace backend::context {
             return dynamic_cast<T*>(misc_storage.back().get());
         }
 
-        void drop_ownership(const char* name);
+        void drop_ownership(std::string_view name);
         void erase_value(std::string_view name);
 
         void drop_reassignable();

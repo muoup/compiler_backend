@@ -39,6 +39,8 @@ namespace backend::context {
 
         [[nodiscard]] std::optional<std::string_view> get_name() const;
 
+        [[nodiscard]] const std::string& get_name_ref() const;
+
         [[nodiscard]] std::optional<virtual_memory *> get_vmem() const;
 
         [[nodiscard]] std::optional<ir::int_literal> get_literal() const {

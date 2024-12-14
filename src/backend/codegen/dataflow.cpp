@@ -34,7 +34,7 @@ backend::context::virtual_memory * backend::context::empty_register(backend::con
         old_mem.gen_operand()
     );
 
-    context.storage.remap_value(reg_storage->owner, new_mem);
+    context.storage.remap_value(old_mem.get_name_ref(), new_mem);
     return new_mem;
 }
 
