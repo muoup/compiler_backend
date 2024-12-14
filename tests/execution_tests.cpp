@@ -28,6 +28,7 @@ void assert_file_exitcode(const char* file_path, int exit_code) {
 
 void run_exec_tests() {
     assert_file_exitcode("../examples/arith_select_test.ir", 5);
+    assert_file_exitcode("../examples/select_test.ir", 1);
     assert_file_exitcode("../examples/fibonacci.ir", 55);
     assert_file_exitcode("../examples/pointer_test.ir", 2);
 

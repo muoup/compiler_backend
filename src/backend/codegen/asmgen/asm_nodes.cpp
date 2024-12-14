@@ -1,21 +1,22 @@
 #include "asm_nodes.hpp"
-#include "../codegen.hpp"
+#include "../context/function_context.hpp"
 
 namespace backend::as::op {
     struct reg : backend::as::op::operand_t {
-        backend::codegen::register_t index;
+        backend::context::register_t index;
 
-        explicit reg(ir::value_size size, backend::codegen::register_t index)
+        explicit reg(ir::value_size size, backend::context::register_t index)
                 : operand_t(operand_types::reg, size), index(index) {}
         ~reg() override = default;
 
         [[nodiscard]] std::string get_value() const override {
             if (address) {
-                return std::string("[")
-                    .append(backend::codegen::register_as_string(index, size))
+                return context::get_stack_prefix(size)
+                    .append("[")
+                    .append(backend::context::register_as_string(index, ir::value_size::ptr))
                     .append("]");
             } else {
-                return backend::codegen::register_as_string(index, size);
+                return backend::context::register_as_string(index, size);
             }
         }
 
@@ -55,7 +56,7 @@ namespace backend::as::op {
             std::stringstream ss;
 
             if (!this->address)
-                ss << codegen::get_stack_prefix(size) << " ";
+                ss << context::get_stack_prefix(size);
 
             ss << "[rbp";
 
@@ -77,29 +78,47 @@ namespace backend::as::op {
     };
 
     struct complex_ptr : operand_t {
-        int64_t offset;
-        inst::explicit_register reg;
-        int8_t reg_scale;
+        int64_t base;
 
-        explicit complex_ptr(ir::value_size element_size, int64_t offset, inst::explicit_register reg, int8_t reg_scale)
-                : operand_t(operand_types::complex_ptr, element_size), offset(offset), reg(reg), reg_scale(reg_scale) {}
+        std::optional<backend::context::register_t> reg;
+        std::optional<int8_t> reg_scale;
+        std::optional<backend::context::register_t> unscaled_reg;
+
+        explicit complex_ptr(ir::value_size size, const backend::context::memory_addr &addr)
+                : operand_t(operand_types::complex_ptr, size), base(addr.offset) {
+            if (addr.scaled.has_value()) {
+                reg = addr.scaled->reg;
+                reg_scale = addr.scaled->scale;
+            }
+
+            if (addr.unscaled.has_value())
+                unscaled_reg = addr.unscaled;
+        }
 
         [[nodiscard]] std::string get_value() const override {
             std::stringstream ss;
 
             if (!this->address)
-                ss << codegen::get_stack_prefix(size) << " ";
+                ss << context::get_stack_prefix(size);
 
             ss << "[";
 
-            if (reg_scale != 1)
-                ss << (int) reg_scale << " * ";
+            if (reg_scale) {
+                if (*reg_scale != 1)
+                    ss << (int) *reg_scale << " * ";
 
-            ss << backend::codegen::register_as_string(reg.reg, ir::value_size::ptr);
+                ss << backend::context::register_as_string(*reg, ir::value_size::ptr);
 
-            if (offset != 0) {
-                ss << ((offset < 0) ? " - " : " + ");
-                ss << std::abs(offset);
+                ss << " + ";
+            }
+
+            if (unscaled_reg.has_value()) {
+                ss << backend::context::register_as_string(*unscaled_reg, ir::value_size::ptr);
+            }
+
+            if (base != 0) {
+                ss << ((base < 0) ? " - " : " + ");
+                ss << std::abs(base);
             }
 
             ss << "]";
@@ -111,7 +130,7 @@ namespace backend::as::op {
                 return false;
 
             auto &other_ptr = dynamic_cast<const complex_ptr&>(other);
-            return other_ptr.offset == offset && other_ptr.reg.reg == reg.reg && other_ptr.reg_scale == reg_scale;
+            return other_ptr.base == base && other_ptr.reg == reg && other_ptr.reg_scale == reg_scale;
         }
     };
 
@@ -198,7 +217,7 @@ namespace backend::as::inst {
         ostream << oper2->get_value();
     }
 
-    void stack_save::print(backend::codegen::function_context &context) const {
+    void stack_save::print(backend::context::function_context &context) const {
         if (context.current_stack_size != 0) {
             print_inst(context.ostream, "push");
             context.ostream << "rbp\n";
@@ -210,68 +229,68 @@ namespace backend::as::inst {
             context.ostream << "rsp, " << context.current_stack_size << '\n';
         }
 
-        for (size_t i = 0; i < backend::codegen::register_count; i++) {
-            if (!context.register_tampered[i] || context.register_is_param[i]) continue;
+        for (size_t i = 1; i < backend::context::register_count; i++) {
+            if (!context.storage.registers[i]->tampered || context.register_is_param[i]) continue;
 
             print_inst(context.ostream, "push");
-            context.ostream << backend::codegen::register_as_string((backend::codegen::register_t) i, ir::value_size::i64);
+            context.ostream << backend::context::register_as_string((backend::context::register_t) i, ir::value_size::i64);
 
-            if (i != backend::codegen::register_count - 1)
+            if (i != backend::context::register_count - 1)
                 context.ostream << '\n';
         }
     }
 
-    void mov::print(backend::codegen::function_context &context) const {
+    void mov::print(backend::context::function_context &context) const {
         print_inst(context.ostream, "mov", src, dest);
     }
 
-    void lea::print(backend::codegen::function_context &context) const {
+    void lea::print(backend::context::function_context &context) const {
         print_inst(context.ostream, "lea", dest, ptr);
     }
 
-    void cmov::print(backend::codegen::function_context &context) const {
+    void cmov::print(backend::context::function_context &context) const {
         print_inst(context.ostream, cond_inst("cmov", type).c_str(), src, dest);
     }
 
-    void movsx::print(backend::codegen::function_context &context) const {
+    void movsx::print(backend::context::function_context &context) const {
         print_inst(context.ostream, "movsx", src, dest);
     }
 
-    void set::print(backend::codegen::function_context &context) const {
+    void set::print(backend::context::function_context &context) const {
         print_inst(context.ostream, cond_inst("set", type).c_str(), op);
     }
 
-    void jmp::print(backend::codegen::function_context &context) const {
+    void jmp::print(backend::context::function_context &context) const {
         print_inst(context.ostream, "jmp");
         context.ostream << "." << label_name;
     }
 
-    void cmp::print(backend::codegen::function_context &context) const {
+    void cmp::print(backend::context::function_context &context) const {
         print_inst(context.ostream, "cmp", oper1, oper2);
     }
 
-    void cond_jmp::print(backend::codegen::function_context &context) const {
+    void cond_jmp::print(backend::context::function_context &context) const {
         print_inst(context.ostream, cond_inst("j", type).c_str());
         context.ostream << "." << branch_name;
     }
 
-    void arithmetic::print(backend::codegen::function_context &context) const {
+    void arithmetic::print(backend::context::function_context &context) const {
         const auto *cmd = arithmetic_command(type);
 
         print_inst(context.ostream, cmd, oper1, oper2);
     }
 
-    void call::print(backend::codegen::function_context &context) const {
+    void call::print(backend::context::function_context &context) const {
         print_inst(context.ostream, "call");
         context.ostream << function_name;
     }
 
-    void ret::print(backend::codegen::function_context &context) const {
-        for (size_t i = backend::codegen::register_count - 1; i >= 1; i--) {
-            if (!context.register_tampered[i] || context.register_is_param[i]) continue;
+    void ret::print(backend::context::function_context &context) const {
+        for (size_t i = backend::context::register_count - 1; i >= 1; i--) {
+            if (!context.storage.registers[i]->tampered || context.register_is_param[i]) continue;
 
             print_inst(context.ostream, "pop");
-            context.ostream << backend::codegen::register_as_string((backend::codegen::register_t) i, ir::value_size::i64) << '\n';
+            context.ostream << backend::context::register_as_string((backend::context::register_t) i, ir::value_size::i64) << '\n';
         }
 
         if (context.current_stack_size != 0) {
@@ -283,19 +302,12 @@ namespace backend::as::inst {
     }
 }
 
-std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr, ir::value_size size) {
-    if (const auto *reg = dynamic_cast<const codegen::register_storage*>(vptr)) {
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const context::virtual_memory *vptr, ir::value_size size) {
+    if (const auto *reg = dynamic_cast<const context::register_storage*>(vptr)) {
         return std::make_unique<op::reg>(size, reg->reg);
-    } else if (const auto *stack = dynamic_cast<const codegen::stack_value*>(vptr)) {
-        return std::make_unique<op::stack_memory>(size, stack->rbp_off);
-    } else if (const auto *complex_ptr = dynamic_cast<const codegen::complex_ptr*>(vptr)) {
-        return std::make_unique<op::complex_ptr>(
-            complex_ptr->size,
-            complex_ptr->offset,
-            inst::explicit_register { complex_ptr->reg },
-            complex_ptr->reg_scale
-        );
-    } else if (const auto *global = dynamic_cast<const codegen::global_pointer*>(vptr)) {
+    } else if (const auto *memory_ptr = dynamic_cast<const context::memory_addr *>(vptr)) {
+        return std::make_unique<op::complex_ptr>(size, *memory_ptr);
+    } else if (const auto *global = dynamic_cast<const context::global_pointer*>(vptr)) {
         return std::make_unique<op::global_pointer>(global->name);
     }
 
@@ -303,21 +315,21 @@ std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const co
 }
 
 std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(ir::int_literal lit, ir::value_size size) {
-    return std::make_unique<op::imm>(lit.size, lit.value);
+    return std::make_unique<op::imm>(size, lit.value);
 }
 
 std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(ir::int_literal lit) {
     return create_operand(lit, lit.size);
 }
 
-std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const codegen::vptr *vptr) {
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const context::virtual_memory *vptr) {
     return create_operand(vptr, vptr->size);
 }
 
-std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(backend::codegen::register_t reg, ir::value_size size) {
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(backend::context::register_t reg, ir::value_size size) {
     return std::make_unique<op::reg>(size, reg);
 }
 
-std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(backend::codegen::complex_ptr ptr) {
-    return std::make_unique<op::complex_ptr>(ptr.size, ptr.offset, inst::explicit_register { ptr.reg }, ptr.reg_scale);
+std::unique_ptr<backend::as::op::operand_t> backend::as::create_operand(const backend::context::memory_addr& ptr) {
+    return std::make_unique<op::complex_ptr>(ptr.size, ptr);
 }

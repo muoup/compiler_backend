@@ -28,7 +28,7 @@ ir::root backend::gen_ast(std::string_view file_name) {
 
 void backend::compile(ir::root &root, std::ostream &ostream) {
     analyze_ir(root);
-    backend::codegen::generate(root, ostream);
+    backend::context::generate(root, ostream);
 }
 
 void backend::compile(std::string_view file_name, std::ostream &ostream) {

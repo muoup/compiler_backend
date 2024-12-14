@@ -10,13 +10,13 @@ namespace ir::block {
     struct allocate;
 }
 
-namespace backend::codegen {
+namespace backend::context {
     struct function_context;
 
     using v_operands = std::vector<ir::value>;
 
     struct instruction_return {
-        std::unique_ptr<vptr> return_dest;
+        virtual_memory* return_dest;
     };
 
     template <typename T>
@@ -51,9 +51,9 @@ namespace backend::codegen {
     declare_instruction_gen(sext);
     declare_instruction_gen(get_array_ptr);
 
-    std::optional<backend::codegen::instruction_return> gen_arithmetic_select(
-            backend::codegen::function_context &context,
+    std::optional<backend::context::instruction_return> gen_arithmetic_select(
+            backend::context::function_context &context,
             const ir::block::select &,
-            const backend::codegen::v_operands &operands
+            const backend::context::v_operands &operands
     );
 }

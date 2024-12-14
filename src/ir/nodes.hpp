@@ -15,6 +15,10 @@
 #define PRINT_DEF(node_name, ...) void print(std::ostream &ostream) const override { __inst_print(ostream, node_name, ##__VA_ARGS__); }
 #define VISITOR_DEF(node_name) void accept(auto fn) { fn(*this); }
 
+namespace backend::context {
+    struct virtual_memory;
+}
+
 namespace ir {
     namespace global {
         struct global_node;
@@ -138,19 +142,19 @@ namespace ir {
 
     namespace block {
         template <typename T>
-        inline void __val_print(std::ostream& ostream, const T& arg) {
+        inline void _val_print(std::ostream& ostream, const T& arg) {
             ostream << " " << arg;
         }
 
         template <>
-        inline void __val_print<value_size>(std::ostream& ostream, const value_size& arg) {
+        inline void _val_print<value_size>(std::ostream& ostream, const value_size& arg) {
             ostream << " " << value_size_str(arg);
         }
 
         template <typename... args>
         inline void __inst_print(std::ostream& ostream, const char* node_name, args... arg) {
             ostream << node_name;
-            (__val_print(ostream, arg), ...);
+            (_val_print(ostream, arg), ...);
         }
 
         enum class node_type {
@@ -180,7 +184,7 @@ namespace ir {
 
             virtual void print(std::ostream&) const = 0;
 
-            [[nodiscard]] virtual bool dropped_reassignable() const { return true; }
+            [[nodiscard]] virtual bool auto_drop_reassignable() const { return true; }
             [[nodiscard]] virtual ir::value_size get_return_size() const { return ir::value_size::param_dependent; }
         };
 
@@ -230,13 +234,7 @@ namespace ir {
                 if (size == ir::value_size::param_dependent) {
                     debug::assert(!operands.empty(), "param dependent size with multiple operands");
 
-                    auto o0_size = operands[0].get_size();
-
-                    for (const auto &operand : operands) {
-                        debug::assert(operand.get_size() == o0_size, "param dependent size with mismatched operand sizes");
-                    }
-
-                    assigned_to->size = o0_size;
+                    assigned_to->size = operands.back().get_size();
                 }
 
                 return std::move(*this);
@@ -433,7 +431,7 @@ namespace ir {
             PRINT_DEF("call", return_size, name);
             VISITOR_DEF();
 
-            [[nodiscard]] bool dropped_reassignable() const override { return false; }
+            [[nodiscard]] bool auto_drop_reassignable() const override { return false; }
             [[nodiscard]] ir::value_size get_return_size() const override { return return_size; }
         };
 
@@ -494,7 +492,7 @@ namespace ir {
             PRINT_DEF(arithmetic_name(type));
             VISITOR_DEF();
 
-            [[nodiscard]] bool dropped_reassignable() const override { return false; }
+            [[nodiscard]] bool auto_drop_reassignable() const override { return false; }
         };
 
         /**
@@ -539,7 +537,7 @@ namespace ir {
             PRINT_DEF("select");
             VISITOR_DEF();
 
-            [[nodiscard]] bool dropped_reassignable() const override { return false; }
+            [[nodiscard]] bool auto_drop_reassignable() const override { return false; }
         };
 
         struct sext : instruction {
@@ -613,8 +611,7 @@ namespace ir {
 
             explicit global_string(std::string name,
                                    std::string value)
-                :   name(std::move(name)),
-                    value(std::move(value)) {}
+               : name(std::move(name)), value(std::move(value)) {}
         };
 
         struct extern_function : global_node {

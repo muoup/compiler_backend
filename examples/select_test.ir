@@ -2,9 +2,7 @@ extern fn void putchar(i32 %c)
 
 define fn i32 main()
     %1 = call i32 arith_select i32 0, i32 1, i32 2
-    %2 = add i32 %1, i32 48
-    call i32 putchar i32 %2
-    ret i32 0
+    ret i32 %1
 end
 
 define fn i32 arith_select(i32 %n, i32 %c1, i32 %c2)
