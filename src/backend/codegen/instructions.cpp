@@ -505,8 +505,6 @@ backend::context::instruction_return backend::context::gen_instruction<ir::block
 
     auto index_size = size_in_bytes(inst.element_size);
 
-    auto mem = backend::context::force_find_register(context, ir::value_size::ptr);
-
     context.storage.ensure_in_register(array);
 
     if (index.is_literal()) {
