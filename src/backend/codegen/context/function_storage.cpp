@@ -5,7 +5,7 @@
 
 using namespace backend;
 
-void context::function_storage::remap_value(std::string name, backend::context::virtual_memory *value) {
+void context::function_storage::remap_value(const std::string& name, backend::context::virtual_memory *value) {
     if (has_value(name)) {
         drop_ownership(name.c_str());
         erase_value(name);

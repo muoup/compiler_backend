@@ -28,7 +28,7 @@ namespace backend::context {
         };
         std::vector<owned_vmem> misc_storage;
 
-        void remap_value(std::string name, virtual_memory *value);
+        void remap_value(const std::string& name, virtual_memory *value);
         void map_value(std::string name, virtual_memory *value);
         void map_value(const ir::variable &var, virtual_memory *value);
 
