@@ -197,16 +197,38 @@ namespace ir {
             std::unique_ptr<instruction> inst;
             std::vector<value> operands;
             std::optional<variable> assigned_to;
+            std::vector<std::string> labels_referenced;
 
-            std::unique_ptr<backend::md::instruction_metadata> metadata { nullptr};
+            std::unique_ptr<backend::md::instruction_metadata> metadata { nullptr };
 
             explicit block_instruction(std::unique_ptr<instruction> instruction,
                                        std::vector<value> operands)
                 :   inst(std::move(instruction)), operands(std::move(operands)) {
-                if (assigned_to == std::nullopt)
-                    return;
 
-                const auto size = instruction->get_return_size();
+            }
+
+            block_instruction() noexcept = default;
+
+            block_instruction&& set_instruction(std::unique_ptr<instruction> instruction) {
+                inst = std::move(instruction);
+                return std::move(*this);
+            }
+
+            block_instruction&& add_operand(value operand) {
+                operands.push_back(std::move(operand));
+                return std::move(*this);
+            }
+
+            block_instruction&& set_operands(std::vector<value> new_operands) {
+                this->operands = std::move(new_operands);
+                return std::move(*this);
+            }
+
+            block_instruction&& finalize() {
+                if (assigned_to == std::nullopt)
+                    return std::move(*this);
+
+                const auto size = inst->get_return_size();
                 debug::assert(size != ir::value_size::none, "instruction with no return size assigned to variable");
 
                 if (size == ir::value_size::param_dependent) {
@@ -214,6 +236,8 @@ namespace ir {
 
                     assigned_to->size = operands.back().get_size();
                 }
+
+                return std::move(*this);
             }
 
             void print(std::ostream &ostream) const;

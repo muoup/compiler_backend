@@ -9,10 +9,13 @@ using lex_iter_t = parser::lex_iter_t;
 
 template <typename InstructionType, typename... Misc>
 auto generate_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
-    std::unique_ptr<InstructionType> instruction = std::make_unique<InstructionType>(parser::parse_argument<Misc>(start, end)...);
-    auto values = parser::parse_operands(start, end);
+    ir::block::block_instruction inst_wrapper {};
 
-    return ir::block::block_instruction { std::move(instruction), std::move(values) };
+    return  inst_wrapper.set_instruction(
+                std::make_unique<InstructionType>(parser::parse_argument<Misc>(inst_wrapper, start, end)...)
+            )
+            .set_operands(parser::parse_operands(start, end))
+            .finalize();
 }
 
 template <typename InstructionType, typename... Args>
@@ -39,17 +42,19 @@ ir::block::block_instruction parser::parse_instruction(parser::lex_iter_t &start
 
 ir::block::block_instruction parser::parse_unassigned_instruction(parser::lex_iter_t &start, parser::lex_iter_t end) {
     if (auto size = maybe_value_size(start, end); size.has_value()) {
-        debug::assert(start->type == lexer::token_type::number, "Expected integer");
+        if (start->type == lexer::token_type::number) {
+            return block::block_instruction {
+                std::make_unique<block::literal>(
+                        ir::int_literal {
+                                *size,
+                                static_cast<uint64_t>(std::stoi(start++->value))
+                        }
+                ),
+                {}
+            };
+        }
 
-        return block::block_instruction {
-            std::make_unique<block::literal>(
-                ir::int_literal {
-                        *size,
-                        static_cast<uint64_t>(std::stoi(start++->value))
-                }
-            ),
-            {}
-        };
+        debug::assert(false, "Unknown alias assignment");
     }
 
     debug::assert(start->type == lexer::token_type::identifier, "Expected identifier");
@@ -117,7 +122,7 @@ std::vector<value> parser::parse_operands(ir::parser::lex_iter_t &start, ir::par
 }
 
 std::optional<ir::value_size> parser::maybe_value_size(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {\
-    std::string_view size = start->value;
+    std::string_view size = start++->value;
 
     if (size == "void") return value_size::none;
     if (size == "i8") return value_size::i8;
@@ -127,12 +132,13 @@ std::optional<ir::value_size> parser::maybe_value_size(ir::parser::lex_iter_t &s
     if (size == "i64") return value_size::i64;
     if (size == "ptr") return value_size::ptr;
 
+    start--;
+
     return std::nullopt;
 }
 
 value_size parser::parse_value_size(ir::parser::lex_iter_t &start, ir::parser::lex_iter_t end) {
     if (auto size = maybe_value_size(start, end); size.has_value()) {
-        start++;
         return *size;
     }
 

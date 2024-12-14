@@ -1,25 +1,15 @@
-#include "../src/backend/interface.hpp"
-#include "../src/exec/executor.hpp"
-#include "../src/ir/input/parser.hpp"
 #include <fstream>
 #include <iostream>
+#include <sstream>
+
+#include "../src/backend/interface.hpp"
+#include "../src/exec/executor.hpp"
 
 void assert_file_exitcode(const char* file_path, int exit_code) {
-    std::ifstream file { file_path };
-    std::ofstream output { "../examples/output.asm" };
-
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file " << file_path << '\n';
-        exit(1);
-    }
-
-    std::string input { std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>() };
-    file.close();
-
-    auto lex = ir::lexer::lex(input);
-    auto ast = ir::parser::parse(lex);
+    auto ast = backend::gen_ast(file_path);
 
     std::stringstream ss;
+    std::ofstream output { "../examples/output.asm" };
 
     backend::compile(ast, ss);
     output << ss.str();
