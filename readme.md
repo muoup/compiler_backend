@@ -23,8 +23,6 @@
   </ol>
 </details>
 
-
-
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
@@ -39,8 +37,6 @@ allowing for a full compiler toolchain from source code to x86-64 assembly.
 
 Compilation from x86-64 assembly to machine code is currently performed using NASM and GCC. I would like
 to research lessening the GCC dependency to just ld, however this is not currently a priority.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -70,8 +66,6 @@ are installed.
    ```sh
    git clone https://github.com/muoup/compiler_backend.git
    ```
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- NOTES -->
 ## Functionality and Notes
