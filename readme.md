@@ -76,13 +76,13 @@ For notes on the nodes used in the IR, see [IR Nodes](/docs/ir_nodes.md).
 
 For notes on potential optimizations to be explored in the future, see [Optimizations](/docs/optimizations.md).
 
-For example compilations, see [Example Compilations](/docs/example_compilations).
+For example compilations, see [Example Compilations](/docs/example-compilations.md).
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
 The software is currently in a very early stage of development, and as such does not have a proper API. 
-However, for examples of compiled output, see [Example Compilations](/docs/example_compilations).
+However, for examples of compiled output, see [Example Compilations](/docs/example-compilations).
 
 <!-- ROADMAP -->
 ## Roadmap
