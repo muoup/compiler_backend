@@ -23,8 +23,6 @@
   </ol>
 </details>
 
-
-
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
@@ -39,8 +37,6 @@ allowing for a full compiler toolchain from source code to x86-64 assembly.
 
 Compilation from x86-64 assembly to machine code is currently performed using NASM and GCC. I would like
 to research lessening the GCC dependency to just ld, however this is not currently a priority.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -71,8 +67,6 @@ are installed.
    git clone https://github.com/muoup/compiler_backend.git
    ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- NOTES -->
 ## Functionality and Notes
 
@@ -84,15 +78,11 @@ For notes on potential optimizations to be explored in the future, see [Optimiza
 
 For example compilations, see [Example Compilations](/docs/example_compilations).
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- USAGE EXAMPLES -->
 ## Usage
 
 The software is currently in a very early stage of development, and as such does not have a proper API. 
 However, for examples of compiled output, see [Example Compilations](/docs/example_compilations).
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ROADMAP -->
 ## Roadmap
@@ -100,8 +90,6 @@ However, for examples of compiled output, see [Example Compilations](/docs/examp
 - [ ] Test Suite w/ 100% instruction coverage
 - [ ] Codegen API
 - [ ] [Compiler Frontend](https://github.com/muoup/compiler_frontend) compatibility
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- CONTRIBUTING -->
 ## Contributing
@@ -117,19 +105,13 @@ Don't forget to give the project a star! Thanks again!
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- LICENSE -->
 ## License
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
 * [The LLVM Compiler Infrastructure Project](https://llvm.org/)
 * [Godbolt Compiler Explorer](https://godbolt.org/)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
