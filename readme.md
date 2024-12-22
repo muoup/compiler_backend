@@ -84,15 +84,11 @@ For notes on potential optimizations to be explored in the future, see [Optimiza
 
 For example compilations, see [Example Compilations](/docs/example_compilations).
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- USAGE EXAMPLES -->
 ## Usage
 
 The software is currently in a very early stage of development, and as such does not have a proper API. 
 However, for examples of compiled output, see [Example Compilations](/docs/example_compilations).
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ROADMAP -->
 ## Roadmap
@@ -100,8 +96,6 @@ However, for examples of compiled output, see [Example Compilations](/docs/examp
 - [ ] Test Suite w/ 100% instruction coverage
 - [ ] Codegen API
 - [ ] [Compiler Frontend](https://github.com/muoup/compiler_frontend) compatibility
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- CONTRIBUTING -->
 ## Contributing
@@ -117,19 +111,13 @@ Don't forget to give the project a star! Thanks again!
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- LICENSE -->
 ## License
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
 * [The LLVM Compiler Infrastructure Project](https://llvm.org/)
 * [Godbolt Compiler Explorer](https://godbolt.org/)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
