@@ -70,13 +70,13 @@ are installed.
 <!-- NOTES -->
 ## Functionality and Notes
 
-For notes on the passes performed by the compiler, see [Analysis Passes](/docs/analysis_passes.md).
+For notes on the passes performed by the compiler, see [Analysis Passes](/docs/analysis-passes.md).
 
-For notes on the nodes used in the IR, see [IR Nodes](/docs/ir_nodes.md).
+For notes on the nodes used in the IR, see [IR Nodes](/docs/nodes.md).
 
-For notes on potential optimizations to be explored in the future, see [Optimizations](/docs/optimizations.md).
+For notes on potential optimizations to be explored in the future, see [Inefficiencies Observed](/docs/inefficiencies-observed.md).
 
-For example compilations, see [Example Compilations](/docs/example_compilations).
+For example compilations, see [Example Compilations](/docs/example-compilations.md).
 
 <!-- USAGE EXAMPLES -->
 ## Usage
