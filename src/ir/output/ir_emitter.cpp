@@ -3,7 +3,7 @@
 
 #include "../nodes.hpp"
 
-void ir::output::emit(std::ostream &ostream, const ir::root &root) {
+void ir::output::emit(const ir::root &root, std::ostream &ostream) {
     for (const auto &global_string : root.global_strings)
         emit_global_string(ostream, global_string);
 

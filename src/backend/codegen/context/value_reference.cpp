@@ -38,6 +38,10 @@ std::optional<std::string_view> value_reference::get_name() const {
     return std::nullopt;
 }
 
+const std::string &value_reference::get_name_ref() const {
+    return std::get<std::string>(value);
+}
+
 [[nodiscard]] std::optional<virtual_memory *> value_reference::get_vmem() const {
     if (!is_variable())
         return std::nullopt;
