@@ -42,11 +42,17 @@ std::optional<std::string_view> value_reference::get_name() const {
     if (!is_variable())
         return std::nullopt;
 
-    if (!context.storage.value_map.contains(std::get<std::string>(value))) {
-        std::cout << "Variable " << std::get<std::string>(value) << " not found in value_map" << std::endl;
+    if (context.storage.value_map.contains(std::get<std::string>(value)))
+        return context.storage.value_map.at(std::get<std::string>(value));
+
+    // look for a global string with the same name
+    for (const auto &global_string : context.global_strings) {
+        if (global_string->name == std::get<std::string>(value))
+            return global_string.get();
     }
 
-    return context.storage.value_map.at(std::get<std::string>(value));
+    std::cerr << "Variable " << std::get<std::string>(value) << " not found in value map\n";
+    return std::nullopt;
 }
 
 std::optional<backend::context::register_t>

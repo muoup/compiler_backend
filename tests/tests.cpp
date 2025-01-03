@@ -7,9 +7,6 @@
 #include "lexer_test.cpp"
 #include "execution_tests.cpp"
 
-#include "../src/backend/interface.hpp"
-#include "../src/ir/input/parser.hpp"
-
 void compile_and_cout(std::string_view file_name) {
     std::ifstream file { file_name.begin() };
 
@@ -26,8 +23,11 @@ void compile_and_cout(std::string_view file_name) {
     backend::compile(ast, std::cout);
 }
 
-int main() {
-//    compile_and_cout("../examples/fibonacci.ir");
+void run_tests() {
+    std::cout << "Running tests...\n";
 
-        run_exec_tests();
+    run_lexer_tests();
+    run_exec_tests();
+
+    std::cout << "Tests complete.\n";
 }

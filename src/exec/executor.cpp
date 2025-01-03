@@ -33,7 +33,7 @@ int sys(std::string_view cmd) {
 }
 
 std::string_view get_extensionless_filename(std::string_view file) {
-    return file.substr(0, file.rfind("."));
+    return file.substr(0, file.rfind('.'));
 }
 
 int run_routine(std::string_view extensionless_path) {
