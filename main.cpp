@@ -5,10 +5,12 @@
 #include "src/ir/input/lexer.hpp"
 #include "src/ir/input/parser.hpp"
 #include "src/backend/interface.hpp"
-#include "src/exec/executor.hpp"
+#include "tests/tests.cpp"
 
 int main() {
-    const char *file_path = "../examples/cast_test.ir";
+    run_tests();
+
+    const char *file_path = "../examples/pointer_test.ir";
 
     std::ifstream file { file_path };
     std::ofstream output { "../output.asm" };
@@ -29,5 +31,5 @@ int main() {
     std::cout << "\nCompilation complete.\n";
     std::cout << "Program Output:\n";
 
-//    return exec::run_once("../output.asm");
+    return exec::execute("../output.asm");
 }

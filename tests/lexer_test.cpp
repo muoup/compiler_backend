@@ -42,12 +42,12 @@ void lexer_test0() {
         { symbol, "%" },
         { number, "3" }
     });
-
-    std::cout << "lexer_test0 passed!" << '\n';
 }
 
 // TODO: More Lexer Tests
 
 void run_lexer_tests() {
     lexer_test0();
+
+    std::cout << "Lexer tests complete.\n";
 }
