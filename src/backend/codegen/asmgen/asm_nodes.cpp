@@ -241,7 +241,12 @@ namespace backend::as::inst {
     }
 
     void mov::print(backend::context::function_context &context) const {
-        print_inst(context.ostream, "mov", src, dest);
+        if (src->get_value() == "0") {
+            print_inst(context.ostream, "xor", dest, dest);
+            return;
+        }
+
+        print_inst(context.ostream, "mov", dest, src);
     }
 
     void lea::print(backend::context::function_context &context) const {

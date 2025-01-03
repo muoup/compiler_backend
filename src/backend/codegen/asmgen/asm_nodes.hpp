@@ -57,7 +57,7 @@ namespace backend::as {
         struct mov : asm_node {
             operand src, dest;
 
-            mov(operand src, operand dest)
+            mov(operand dest, operand src)
                     : src(std::move(src)), dest(std::move(dest)) {
                 if (this->src->equals(*this->dest))
                     is_valid = false;
